@@ -1,0 +1,16 @@
+.{
+    .name = .clap_demo,
+    .version = "1.0.0",
+    .fingerprint = 0x000355667bdddeff,
+    .dependencies = .{
+        .clap_bindings = .{
+            .url = "git+https://git.sr.ht/~interpunct/clap-zig-bindings#70819dd9503b19c7e4e4e2a2d865fac8f4dc24e9",
+            .hash = "clap_bindings-1.0.3-9TIcDTQ4AQCPAo60sZbsKCOePA-j6u4BWq2uqEuBHyvl",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
