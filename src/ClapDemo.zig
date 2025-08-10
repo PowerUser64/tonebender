@@ -754,112 +754,108 @@ const gui = struct {
 
     fn gui_create(plugin: *const clap.Plugin, api: ?[*:0]const u8, is_floating: bool) callconv(.C) bool {
         var clap_demo = fromPlugin(plugin);
-        _ = api;
-        _ = is_floating;
+        clap_demo.log("gui_create {?s} {}", .{ api, is_floating });
 
-        clap_demo.log("hello i am a plugin creating", .{});
+        return true;
+    }
 
-        clap_demo.backend = Backend.initWindow(.{
-            .allocator = clap_demo.allocator,
-            .size = .{ .w = 640, .h = 480 },
-            .vsync = true,
-            .title = "hello plugin",
-        }) catch unreachable;
+    fn gui_destroy(plugin: *const clap.Plugin) callconv(.C) void {
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_destroy", .{});
+
+        clap_demo.win.?.deinit();
+        clap_demo.win = null;
+
+        clap_demo.backend.?.deinit();
+        clap_demo.backend = null;
+
+        clap_demo.log("closing da plugin", .{});
+    }
+
+    fn gui_setParent(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_setParent {}", .{window.*});
+
+        const props = Backend.c.SDL_CreateProperties();
+        defer Backend.c.SDL_DestroyProperties(props);
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER, window.data.ptr);
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER, window.data.ptr);
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER, window.data.ptr);
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER, window.data.ptr);
+        const sdl_window = Backend.c.SDL_CreateWindowWithProperties(props).?;
+
+        const renderer = Backend.c.SDL_CreateRenderer(sdl_window, null).?;
+
+        clap_demo.backend = Backend.init(sdl_window, renderer);
+        clap_demo.backend.?.we_own_window = true;
 
         clap_demo.win = dvui.Window.init(@src(), clap_demo.allocator, clap_demo.backend.?.backend(), .{}) catch unreachable;
 
         return true;
     }
 
-    fn gui_destroy(plugin: *const clap.Plugin) callconv(.C) void {
-        _ = plugin;
-
-        // var clap_demo = fromPlugin(plugin);
-
-        // clap_demo.win.?.deinit();
-        // clap_demo.win = null;
-
-        // clap_demo.backend.?.deinit();
-        // clap_demo.backend = null;
-    }
-
-    fn gui_setParent(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
-        const clap_demo = fromPlugin(plugin);
-
-        const props = Backend.c.SDL_CreateProperties();
-        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER, window.data.ptr);
-        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER, window.data.ptr);
-        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER, window.data.ptr);
-        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER, window.data.ptr);
-        const parent_window = Backend.c.SDL_CreateWindowWithProperties(props);
-
-        // TODO: for some reason this creates a tiny window (make it not make a tiny window)
-        _ = Backend.c.SDL_SetWindowParent(clap_demo.backend.?.window, parent_window);
-
-        return true;
-    }
-
     // stubs
     fn gui_isApiSupported(plugin: *const clap.Plugin, api: [*:0]const u8, is_floating: bool) callconv(.C) bool {
-        _ = plugin;
-        _ = api;
-        _ = is_floating;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_isApiSupported {s} {}", .{ api, is_floating });
         return true;
     }
     fn gui_getPreferredApi(plugin: *const clap.Plugin, api: *[*:0]const u8, is_floating: *bool) callconv(.C) bool {
-        _ = plugin;
-        _ = api;
-        _ = is_floating;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_getPreferredApi {s} {}", .{ api, is_floating });
         return true;
     }
     fn gui_setScale(plugin: *const clap.Plugin, scale: f64) callconv(.C) bool {
-        _ = plugin;
-        _ = scale;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_setScale {}", .{scale});
         return true;
     }
     fn gui_getSize(plugin: *const clap.Plugin, width: *u32, height: *u32) callconv(.C) bool {
-        _ = plugin;
-        _ = width;
-        _ = height;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_getSize {} {}", .{ width.*, height.* });
+
+        width.* = 640;
+        height.* = 480;
         return true;
     }
     fn gui_canResize(plugin: *const clap.Plugin) callconv(.C) bool {
-        _ = plugin;
-        return true;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_canResize", .{});
+        return false;
     }
     fn gui_getResizeHints(plugin: *const clap.Plugin, hints: *clap.ext.gui.ResizeHints) callconv(.C) bool {
-        _ = plugin;
-        _ = hints;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_getResizeHints {}", .{hints.*});
         return true;
     }
     fn gui_adjustSize(plugin: *const clap.Plugin, width: *u32, height: *u32) callconv(.C) bool {
-        _ = plugin;
-        _ = width;
-        _ = height;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_adjustSize {} {}", .{ width.*, height.* });
         return true;
     }
     fn gui_setSize(plugin: *const clap.Plugin, width: u32, height: u32) callconv(.C) bool {
-        _ = plugin;
-        _ = width;
-        _ = height;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_setSize {} {}", .{ width, height });
         return true;
     }
     fn gui_setTransient(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
-        _ = plugin;
-        _ = window;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_setTransient {}", .{window.*});
         return true;
     }
     fn gui_suggestTitle(plugin: *const clap.Plugin, title: [*:0]const u8) callconv(.C) bool {
-        _ = plugin;
-        _ = title;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_suggestTitle {s}", .{title});
         return true;
     }
     fn gui_show(plugin: *const clap.Plugin) callconv(.C) bool {
-        _ = plugin;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_show", .{});
         return true;
     }
     fn gui_hide(plugin: *const clap.Plugin) callconv(.C) bool {
-        _ = plugin;
+        var clap_demo = fromPlugin(plugin);
+        clap_demo.log("gui_hide", .{});
         return true;
     }
 };
