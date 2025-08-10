@@ -1,11 +1,15 @@
 .{
     .name = .clap_demo,
     .version = "1.0.0",
-    .fingerprint = 0x000355667bdddeff,
+    .fingerprint = 0x6f050e0d1ad2d6f5,
     .dependencies = .{
         .clap_bindings = .{
             .url = "git+https://git.sr.ht/~interpunct/clap-zig-bindings#70819dd9503b19c7e4e4e2a2d865fac8f4dc24e9",
             .hash = "clap_bindings-1.0.3-9TIcDTQ4AQCPAo60sZbsKCOePA-j6u4BWq2uqEuBHyvl",
+        },
+        .dvui = .{
+            .url = "git+https://github.com/david-vanderson/dvui#ca018d707a62a4dc056f7cc0f466015cc0758ebe",
+            .hash = "dvui-0.2.0-AQFJmd-T0gCNcZzepi0AFm2iAVVABgtU09aW45pLlPlz",
         },
     },
     .paths = .{

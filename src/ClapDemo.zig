@@ -3,6 +3,10 @@ const clap = @import("clap-bindings");
 
 const Voice = @import("Voice.zig");
 
+// gui
+const dvui = @import("dvui");
+const Backend = @import("backend");
+
 const max_voices = 64;
 
 pub const desc = clap.Plugin.Descriptor{
@@ -34,7 +38,7 @@ const ParamValues = std.EnumArray(Param, f64);
 
 const param_count = std.meta.fields(Param).len;
 
-const param_defaults: std.enums.EnumFieldStruct(Param, f64, null)  = .{
+const param_defaults: std.enums.EnumFieldStruct(Param, f64, null) = .{
     .oscillator_detune = 0,
     .amp_attack = 0.01,
     .amp_release = 0.2,
@@ -50,6 +54,10 @@ sample_rate: ?f64 = null,
 voices_buffer: [2 * max_voices * @sizeOf(Voice)]u8,
 voice_allocator: std.heap.FixedBufferAllocator,
 voices: std.ArrayList(Voice),
+
+// gui
+backend: ?Backend = null,
+win: ?dvui.Window = null,
 
 fn fromPlugin(plugin: *const clap.Plugin) *@This() {
     return @ptrCast(@alignCast(plugin.plugin_data));
@@ -332,6 +340,8 @@ fn getExtension(_: *const clap.Plugin, id: [*:0]const u8) callconv(.C) ?*const a
         return &state.extension;
     } else if (eql(clap.ext.params.id, id)) {
         return &params.extension;
+    } else if (eql(clap.ext.gui.id, id)) {
+        return &gui.extension;
     } else {
         return null;
     }
@@ -712,5 +722,67 @@ const params = struct {
             const next_event = in.get(in, event_index);
             clap_demo.handleInboundEvent(next_event);
         }
+    }
+};
+
+// gui
+const gui = struct {
+    const extension = clap.ext.gui.Plugin{
+        .create = gui_create,
+        .destroy = gui_destroy,
+        .adjustSize = undefined,
+        .canResize = undefined,
+        .getPreferredApi = undefined,
+        .getResizeHints = undefined,
+        .getSize = undefined,
+        .hide = undefined,
+        .isApiSupported = undefined,
+        .setParent = undefined,
+        .setScale = undefined,
+        .setSize = undefined,
+        .setTransient = undefined,
+        .show = undefined,
+        .suggestTitle = undefined,
+    };
+
+    fn gui_create(plugin: *const clap.Plugin, api: ?[*:0]const u8, is_floating: bool) callconv(.C) bool {
+        var clap_demo = fromPlugin(plugin);
+        _ = api;
+        _ = is_floating;
+
+        clap_demo.backend = Backend.initWindow(.{
+            .allocator = clap_demo.allocator,
+            .size = .{ .w = 640, .h = 480 },
+            .vsync = true,
+            .title = "hello plugin",
+        }) catch unreachable;
+
+        clap_demo.win = dvui.Window.init(@src(), clap_demo.allocator, clap_demo.backend.?.backend(), .{}) catch unreachable;
+
+        return true;
+    }
+
+    fn gui_destroy(plugin: *const clap.Plugin) callconv(.C) void {
+        var clap_demo = fromPlugin(plugin);
+
+        clap_demo.win.?.deinit();
+        clap_demo.win = null;
+
+        clap_demo.backend.?.deinit();
+        clap_demo.backend = null;
+    }
+};
+
+const timer = struct {
+    const extension = clap.ext.timer_support.Plugin{
+        .onTimer = onTimer,
+    };
+
+    fn onTimer(plugin: *const clap.Plugin) void {
+        const clap_demo = fromPlugin(plugin);
+        _ = clap_demo;
+
+        // var host: *clap.ext.timer_support.Host  = @ptrCast(clap_demo.host.getExtension(clap.ext.timer_support.id));
+        // host.registerTimer(clap_demo.host, period_ms: u32, timer_id: clap.Id)
     }
 };

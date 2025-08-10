@@ -17,13 +17,13 @@ pub fn build(b: *std.Build) void {
         clap_bindings.module("clap-bindings"),
     );
 
-    lib.linkLibC();
-    lib.addCSourceFile(.{
-        .file = b.path("faust/tonebender.c")
+    const dvui_dep = b.dependency("dvui", .{
+        .target = target,
+        .optimize = optimize,
+        .backend = .sdl3,
     });
-
-    // lib.linkSystemLibrary("c++");
-    lib.addIncludePath(b.path("faust"));
+    lib.root_module.addImport("dvui", dvui_dep.module("dvui_sdl3"));
+    lib.root_module.addImport("backend", dvui_dep.module("sdl3"));
 
     const package_step = createPackageStep(b, lib);
     b.default_step = package_step;
