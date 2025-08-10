@@ -735,25 +735,29 @@ const gui = struct {
     const extension = clap.ext.gui.Plugin{
         .create = gui_create,
         .destroy = gui_destroy,
-        .adjustSize = undefined,
-        .canResize = undefined,
-        .getPreferredApi = undefined,
-        .getResizeHints = undefined,
-        .getSize = undefined,
-        .hide = undefined,
-        .isApiSupported = undefined,
-        .setParent = setParent,
-        .setScale = undefined,
-        .setSize = undefined,
-        .setTransient = undefined,
-        .show = undefined,
-        .suggestTitle = undefined,
+        .setParent = gui_setParent,
+
+        // stubs
+        .adjustSize = gui_adjustSize,
+        .canResize = gui_canResize,
+        .getPreferredApi = gui_getPreferredApi,
+        .getResizeHints = gui_getResizeHints,
+        .getSize = gui_getSize,
+        .hide = gui_hide,
+        .isApiSupported = gui_isApiSupported,
+        .setScale = gui_setScale,
+        .setSize = gui_setSize,
+        .setTransient = gui_setTransient,
+        .show = gui_show,
+        .suggestTitle = gui_suggestTitle,
     };
 
     fn gui_create(plugin: *const clap.Plugin, api: ?[*:0]const u8, is_floating: bool) callconv(.C) bool {
         var clap_demo = fromPlugin(plugin);
         _ = api;
         _ = is_floating;
+
+        clap_demo.log("hello i am a plugin creating", .{});
 
         clap_demo.backend = Backend.initWindow(.{
             .allocator = clap_demo.allocator,
@@ -768,24 +772,94 @@ const gui = struct {
     }
 
     fn gui_destroy(plugin: *const clap.Plugin) callconv(.C) void {
-        var clap_demo = fromPlugin(plugin);
+        _ = plugin;
 
-        clap_demo.win.?.deinit();
-        clap_demo.win = null;
+        // var clap_demo = fromPlugin(plugin);
 
-        clap_demo.backend.?.deinit();
-        clap_demo.backend = null;
+        // clap_demo.win.?.deinit();
+        // clap_demo.win = null;
+
+        // clap_demo.backend.?.deinit();
+        // clap_demo.backend = null;
     }
 
-    fn setParent(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
+    fn gui_setParent(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
         const clap_demo = fromPlugin(plugin);
 
         const props = Backend.c.SDL_CreateProperties();
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER, window.data.ptr);
         _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER, window.data.ptr);
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER, window.data.ptr);
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER, window.data.ptr);
         const parent_window = Backend.c.SDL_CreateWindowWithProperties(props);
 
+        // TODO: for some reason this creates a tiny window (make it not make a tiny window)
         _ = Backend.c.SDL_SetWindowParent(clap_demo.backend.?.window, parent_window);
 
+        return true;
+    }
+
+    // stubs
+    fn gui_isApiSupported(plugin: *const clap.Plugin, api: [*:0]const u8, is_floating: bool) callconv(.C) bool {
+        _ = plugin;
+        _ = api;
+        _ = is_floating;
+        return true;
+    }
+    fn gui_getPreferredApi(plugin: *const clap.Plugin, api: *[*:0]const u8, is_floating: *bool) callconv(.C) bool {
+        _ = plugin;
+        _ = api;
+        _ = is_floating;
+        return true;
+    }
+    fn gui_setScale(plugin: *const clap.Plugin, scale: f64) callconv(.C) bool {
+        _ = plugin;
+        _ = scale;
+        return true;
+    }
+    fn gui_getSize(plugin: *const clap.Plugin, width: *u32, height: *u32) callconv(.C) bool {
+        _ = plugin;
+        _ = width;
+        _ = height;
+        return true;
+    }
+    fn gui_canResize(plugin: *const clap.Plugin) callconv(.C) bool {
+        _ = plugin;
+        return true;
+    }
+    fn gui_getResizeHints(plugin: *const clap.Plugin, hints: *clap.ext.gui.ResizeHints) callconv(.C) bool {
+        _ = plugin;
+        _ = hints;
+        return true;
+    }
+    fn gui_adjustSize(plugin: *const clap.Plugin, width: *u32, height: *u32) callconv(.C) bool {
+        _ = plugin;
+        _ = width;
+        _ = height;
+        return true;
+    }
+    fn gui_setSize(plugin: *const clap.Plugin, width: u32, height: u32) callconv(.C) bool {
+        _ = plugin;
+        _ = width;
+        _ = height;
+        return true;
+    }
+    fn gui_setTransient(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
+        _ = plugin;
+        _ = window;
+        return true;
+    }
+    fn gui_suggestTitle(plugin: *const clap.Plugin, title: [*:0]const u8) callconv(.C) bool {
+        _ = plugin;
+        _ = title;
+        return true;
+    }
+    fn gui_show(plugin: *const clap.Plugin) callconv(.C) bool {
+        _ = plugin;
+        return true;
+    }
+    fn gui_hide(plugin: *const clap.Plugin) callconv(.C) bool {
+        _ = plugin;
         return true;
     }
 };
@@ -849,3 +923,10 @@ const timer_support = struct {
 
     }
 };
+
+fn log(self: ClapDemo, comptime fmt: []const u8, args: anytype) void {
+    const host: *const clap.ext.log.Host = @ptrCast(@alignCast(self.host.getExtension(self.host, clap.ext.log.id)));
+    const msg = std.fmt.allocPrintZ(self.allocator, fmt, args) catch unreachable;
+    defer self.allocator.free(msg);
+    host.log(self.host, .info, msg);
+}
