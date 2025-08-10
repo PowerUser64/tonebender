@@ -3,6 +3,8 @@ const clap = @import("clap-bindings");
 
 const Voice = @import("Voice.zig");
 
+const ClapDemo = @This();
+
 // gui
 const dvui = @import("dvui");
 const Backend = @import("backend");
@@ -58,6 +60,7 @@ voices: std.ArrayList(Voice),
 // gui
 backend: ?Backend = null,
 win: ?dvui.Window = null,
+interrupted: bool = false,
 
 fn fromPlugin(plugin: *const clap.Plugin) *@This() {
     return @ptrCast(@alignCast(plugin.plugin_data));
@@ -342,6 +345,8 @@ fn getExtension(_: *const clap.Plugin, id: [*:0]const u8) callconv(.C) ?*const a
         return &params.extension;
     } else if (eql(clap.ext.gui.id, id)) {
         return &gui.extension;
+    } else if (eql(clap.ext.timer_support.id, id)) {
+        return &timer_support.extension;
     } else {
         return null;
     }
@@ -737,7 +742,7 @@ const gui = struct {
         .getSize = undefined,
         .hide = undefined,
         .isApiSupported = undefined,
-        .setParent = undefined,
+        .setParent = setParent,
         .setScale = undefined,
         .setSize = undefined,
         .setTransient = undefined,
@@ -771,18 +776,76 @@ const gui = struct {
         clap_demo.backend.?.deinit();
         clap_demo.backend = null;
     }
+
+    fn setParent(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
+        const clap_demo = fromPlugin(plugin);
+
+        const props = Backend.c.SDL_CreateProperties();
+        _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER, window.data.ptr);
+        const parent_window = Backend.c.SDL_CreateWindowWithProperties(props);
+
+        _ = Backend.c.SDL_SetWindowParent(clap_demo.backend.?.window, parent_window);
+
+        return true;
+    }
 };
 
-const timer = struct {
+const timer_support = struct {
     const extension = clap.ext.timer_support.Plugin{
         .onTimer = onTimer,
     };
 
-    fn onTimer(plugin: *const clap.Plugin) void {
+    fn onTimer(plugin: *const clap.Plugin, timer_id: clap.Id) callconv(.C) void {
         const clap_demo = fromPlugin(plugin);
-        _ = clap_demo;
+        _ = timer_id;
 
-        // var host: *clap.ext.timer_support.Host  = @ptrCast(clap_demo.host.getExtension(clap.ext.timer_support.id));
-        // host.registerTimer(clap_demo.host, period_ms: u32, timer_id: clap.Id)
+        do_frame(clap_demo) catch unreachable;
+    }
+
+    fn do_frame(clap_demo: *ClapDemo) !void {
+        var backend = clap_demo.backend.?;
+        var win = clap_demo.win.?;
+
+        // copied from dvui example
+
+        // beginWait coordinates with waitTime below to run frames only when needed
+        const nstime = win.beginWait(clap_demo.interrupted);
+
+        // marks the beginning of a frame for dvui, can call dvui functions after this
+        try win.begin(nstime);
+
+        // send all SDL events to dvui for processing
+        const quit = try backend.addAllEvents(&win);
+        _ = quit;
+
+        // if dvui widgets might not cover the whole window, then need to clear
+        // the previous frame's render
+        _ = Backend.c.SDL_SetRenderDrawColor(backend.renderer, 0, 0, 0, 255);
+        _ = Backend.c.SDL_RenderClear(backend.renderer);
+
+        // const keep_running = gui_frame();
+        // if (!keep_running) break :main_loop;
+
+        // marks end of dvui frame, don't call dvui functions after this
+        // - sends all dvui stuff to backend for rendering, must be called before renderPresent()
+        const end_micros = try win.end(.{});
+
+        // cursor management
+        try backend.setCursor(win.cursorRequested());
+        try backend.textInputRect(win.textInputRequested());
+
+        // render frame to OS
+        try backend.renderPresent();
+
+        // waitTime and beginWait combine to achieve variable framerates
+        const wait_event_micros = win.waitTime(end_micros, null);
+        clap_demo.interrupted = try backend.waitEventTimeout(wait_event_micros);
+
+        // Example of how to show a dialog from another thread (outside of win.begin/win.end)
+        // if (show_dialog_outside_frame) {
+        //     show_dialog_outside_frame = false;
+        //     dvui.dialog(@src(), .{}, .{ .window = &win, .modal = false, .title = "Dialog from Outside", .message = "This is a non modal dialog that was created outside win.begin()/win.end(), usually from another thread." });
+        // }
+
     }
 };
