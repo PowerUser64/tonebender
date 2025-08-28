@@ -38,7 +38,7 @@ pub const gui = struct {
         wio.init(clap_demo.allocator, .{}) catch unreachable;
         win = wio.createWindow(.{}) catch unreachable;
 
-        return is_floating == false;
+        return true;
     }
 
     fn destroy(plugin: *const clap.Plugin) callconv(.C) void {
@@ -56,7 +56,7 @@ pub const gui = struct {
 
     fn setParent(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
         var clap_demo = ClapDemo.fromPlugin(plugin);
-        clap_demo.log("setParent {}", .{window.*});
+        clap_demo.log("setParent {s} {}", .{ window.api, window.data.ptr });
 
         // const props = Backend.c.SDL_CreateProperties();
         // defer Backend.c.SDL_DestroyProperties(props);
@@ -81,15 +81,15 @@ pub const gui = struct {
     fn isApiSupported(plugin: *const clap.Plugin, api: [*:0]const u8, is_floating: bool) callconv(.C) bool {
         var clap_demo = ClapDemo.fromPlugin(plugin);
         clap_demo.log("isApiSupported {s} {}", .{ api, is_floating });
-        return true;
+        return is_floating == true;
     }
     fn getPreferredApi(plugin: *const clap.Plugin, api: *[*:0]const u8, is_floating: *bool) callconv(.C) bool {
         var clap_demo = ClapDemo.fromPlugin(plugin);
 
         api.* = clap.ext.gui.window_api.wayland;
-        is_floating.* = false;
+        is_floating.* = true;
 
-        clap_demo.log("getPreferredApi {s} {}", .{ api, is_floating });
+        clap_demo.log("getPreferredApi {s} {}", .{ api.*, is_floating.* });
         return true;
     }
     fn setScale(plugin: *const clap.Plugin, scale: f64) callconv(.C) bool {
@@ -129,7 +129,7 @@ pub const gui = struct {
     }
     fn setTransient(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
         var clap_demo = ClapDemo.fromPlugin(plugin);
-        clap_demo.log("setTransient {}", .{window.*});
+        clap_demo.log("setTransient {s} {}", .{ window.api, window.data.ptr });
         return false;
     }
     fn suggestTitle(plugin: *const clap.Plugin, title: [*:0]const u8) callconv(.C) bool {
@@ -167,11 +167,14 @@ pub const timer_support = struct {
 
     fn onTimer(plugin: *const clap.Plugin, timer_id: clap.Id) callconv(.C) void {
         const clap_demo = ClapDemo.fromPlugin(plugin);
-        _ = clap_demo;
+        // _ = clap_demo;
         _ = timer_id;
+        _ = clap_demo;
 
-        wio.update();
-        wio.wait();
+        // clap_demo.log("timer", .{});
+
+        // wio.update();
+        // wio.wait();
         // try_onTimer(clap_demo) catch unreachable;
     }
 
