@@ -17,15 +17,25 @@ pub fn build(b: *std.Build) void {
         clap_bindings.module("clap-bindings"),
     );
 
-    const dvui_dep = b.dependency("dvui", .{
+    // const dvui_dep = b.dependency("dvui", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    //     .backend = .custom,
+    // });
+    // const dvui_mod = dvui_dep.module("dvui");
+    // const wio_backend_mod = b.addModule("WioBackend", .{
+    //     .root_source_file = b.path("src/WioBackend.zig"),
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    // @import("dvui").linkBackend(dvui_mod, wio_backend_mod);
+    // lib.root_module.addImport("dvui", dvui_mod);
+    // lib.root_module.addImport("backend", wio_backend_mod);
+
+    const wio = b.dependency("wio", .{
         .target = target,
         .optimize = optimize,
-        .backend = .sdl3,
     });
-    lib.root_module.addImport("dvui", dvui_dep.module("dvui_sdl3"));
-    lib.root_module.addImport("backend", dvui_dep.module("sdl3"));
-
-    const wio = b.dependency("wio", .{ .target = target, .optimize = optimize });
     lib.root_module.addImport("wio", wio.module("wio"));
 
     const package_step = createPackageStep(b, lib);
