@@ -29,7 +29,7 @@
 #define FAUSTFLOAT float
 #endif
 
-#include <stdlib.h>
+// #include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -141,7 +141,7 @@ typedef void (*metadataFun)(MetaGlue *meta);
  * DSP memory manager functions
  ***************************************/
 
-typedef void *(*allocateFun)(void *manager_interface, size_t size);
+typedef void *(*allocateFun)(void *manager_interface, unsigned long size);
 typedef void (*destroyFun)(void *manager_interface, void *ptr);
 
 typedef struct {

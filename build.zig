@@ -25,6 +25,9 @@ pub fn build(b: *std.Build) void {
     lib.root_module.addImport("dvui", dvui_dep.module("dvui_sdl3"));
     lib.root_module.addImport("backend", dvui_dep.module("sdl3"));
 
+    const wio = b.dependency("wio", .{ .target = target, .optimize = optimize });
+    lib.root_module.addImport("wio", wio.module("wio"));
+
     const package_step = createPackageStep(b, lib);
     b.default_step = package_step;
 }

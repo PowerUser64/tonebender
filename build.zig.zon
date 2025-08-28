@@ -11,6 +11,10 @@
             .url = "git+https://github.com/david-vanderson/dvui#ca018d707a62a4dc056f7cc0f466015cc0758ebe",
             .hash = "dvui-0.2.0-AQFJmd-T0gCNcZzepi0AFm2iAVVABgtU09aW45pLlPlz",
         },
+        .wio = .{
+            .url = "git+https://github.com/ypsvlq/wio#c41a2a19cbf2ec2c12c70a1fb2bf9d780c93722b",
+            .hash = "wio-0.0.0-8xHrr-GrBADTqD32Z3W7KBsje7i53P7bKmVGw9jRrYsA",
+        },
     },
     .paths = .{
         "build.zig",
