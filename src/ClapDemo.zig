@@ -88,13 +88,11 @@ fn init(plugin: *const clap.Plugin) callconv(.C) bool {
     var clap_demo = fromPlugin(plugin);
     clap_demo.voice_allocator = std.heap.FixedBufferAllocator.init(&clap_demo.voices_buffer);
     clap_demo.voices = std.ArrayList(Voice).init(clap_demo.voice_allocator.allocator());
-    Gui.timer_support.registerTimer(clap_demo);
     return true;
 }
 
 fn destroy(plugin: *const clap.Plugin) callconv(.C) void {
     var clap_demo = fromPlugin(plugin);
-    Gui.timer_support.unregisterTimer(clap_demo);
     clap_demo.allocator.destroy(clap_demo);
 }
 

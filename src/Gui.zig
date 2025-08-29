@@ -1,15 +1,11 @@
 const clap = @import("clap-bindings");
-
-// const dvui = @import("dvui");
-// const Backend = @import("backend");
-const wio = @import("wio");
+const dvui = @import("dvui");
 
 const ClapDemo = @import("ClapDemo.zig");
 
-// var backend: ?Backend = null;
-// var win: ?dvui.Window = null;
-// var interrupted: bool = false;
-var win: wio.Window = undefined;
+// will globals explode? idk
+var win: dvui.Window = undefined;
+var backend: dvui.backend = undefined;
 var timerId: clap.Id = undefined;
 
 pub const gui = struct {
@@ -35,8 +31,9 @@ pub const gui = struct {
         var clap_demo = ClapDemo.fromPlugin(plugin);
         clap_demo.log("create {?s} {}", .{ api, is_floating });
 
-        wio.init(clap_demo.allocator, .{}) catch unreachable;
-        win = wio.createWindow(.{}) catch unreachable;
+        backend = dvui.backend.init(clap_demo.allocator, .{}) catch unreachable;
+        win = dvui.Window.init(@src(), clap_demo.allocator, backend.backend(), .{}) catch unreachable;
+        timer_support.registerTimer(clap_demo);
 
         return true;
     }
@@ -45,35 +42,16 @@ pub const gui = struct {
         var clap_demo = ClapDemo.fromPlugin(plugin);
         clap_demo.log("destroy", .{});
 
-        win.destroy();
-        wio.deinit();
-
-        // backend.?.deinit();
-        // backend = null;
-
-        clap_demo.log("closing da plugin", .{});
+        timer_support.unregisterTimer(clap_demo);
+        win.deinit();
+        backend.deinit();
     }
 
     fn setParent(plugin: *const clap.Plugin, window: *const clap.ext.gui.Window) callconv(.C) bool {
         var clap_demo = ClapDemo.fromPlugin(plugin);
         clap_demo.log("setParent {s} {}", .{ window.api, window.data.ptr });
 
-        // const props = Backend.c.SDL_CreateProperties();
-        // defer Backend.c.SDL_DestroyProperties(props);
-        // _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER, window.data.ptr);
-        // _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER, window.data.ptr);
-        // _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER, window.data.ptr);
-        // _ = Backend.c.SDL_SetPointerProperty(props, Backend.c.SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER, window.data.ptr);
-        // const sdl_window = Backend.c.SDL_CreateWindowWithProperties(props).?;
-
-        // const renderer = Backend.c.SDL_CreateRenderer(sdl_window, null).?;
-
-        // backend = Backend.init(sdl_window, renderer);
-        // backend.?.we_own_window = true;
-
-        // win = dvui.Window.init(@src(), clap_demo.allocator, backend.?.backend(), .{}) catch unreachable;
-
-        win.setParent(@intFromPtr(window.data.ptr));
+        backend.win.setParent(@intFromPtr(window.data.ptr));
 
         return true;
     }
@@ -167,18 +145,21 @@ pub const timer_support = struct {
 
     fn onTimer(plugin: *const clap.Plugin, timer_id: clap.Id) callconv(.C) void {
         const clap_demo = ClapDemo.fromPlugin(plugin);
-        // _ = clap_demo;
         _ = timer_id;
-        _ = clap_demo;
-
         // clap_demo.log("timer", .{});
 
-        // wio.update();
-        // wio.wait();
-        // try_onTimer(clap_demo) catch unreachable;
-    }
+        while (backend.win.getEvent()) |event| {
+            clap_demo.log("window event {}", .{event});
 
-    fn try_onTimer(clap_demo: *ClapDemo) !void {
-        _ = clap_demo;
+            if (event == .close) {
+                const host: *const clap.ext.gui.Host = @alignCast(@ptrCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.gui.id)));
+                host.closed(clap_demo.host, true);
+                return;
+            }
+        }
+        dvui.backend.wio.wait();
+
+        dvui.backend.wio.update();
+        // try_onTimer(clap_demo) catch unreachable;
     }
 };
