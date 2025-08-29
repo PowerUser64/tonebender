@@ -21,7 +21,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    // lib.root_module.addImport("wio", wio.module("wio"));
 
     const wio_backend_mod = b.addModule("WioBackend", .{
         .root_source_file = b.path("src/WioBackend.zig"),
@@ -29,6 +28,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
     wio_backend_mod.addImport("wio", wio.module("wio"));
+
+    const zgl = b.dependency("zgl", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    wio_backend_mod.addImport("zgl", zgl.module("zgl"));
 
     const dvui_dep = b.dependency("dvui", .{
         .target = target,

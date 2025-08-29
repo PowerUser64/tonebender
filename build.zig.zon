@@ -15,6 +15,10 @@
             .url = "git+https://github.com/ypsvlq/wio#c41a2a19cbf2ec2c12c70a1fb2bf9d780c93722b",
             .hash = "wio-0.0.0-8xHrr-GrBADTqD32Z3W7KBsje7i53P7bKmVGw9jRrYsA",
         },
+        .zgl = .{
+            .url = "git+https://github.com/ziglibs/zgl#caf811fb8b778184128772e57dfcb96be2351c43",
+            .hash = "zgl-1.1.0-p_NpAJJECgDSDHYHH_W6rX0snxnFoJ4JZZ0FV5_vqjjy",
+        },
     },
     .paths = .{
         "build.zig",

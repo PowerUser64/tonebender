@@ -151,15 +151,37 @@ pub const timer_support = struct {
         while (backend.win.getEvent()) |event| {
             clap_demo.log("window event {}", .{event});
 
-            if (event == .close) {
-                const host: *const clap.ext.gui.Host = @alignCast(@ptrCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.gui.id)));
-                host.closed(clap_demo.host, true);
-                return;
+            switch (event) {
+                .close => {
+                    const host: *const clap.ext.gui.Host = @alignCast(@ptrCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.gui.id)));
+                    host.closed(clap_demo.host, true);
+                    return;
+                },
+                .draw => {
+                    draw(clap_demo) catch unreachable;
+                },
+                else => {},
             }
         }
         dvui.backend.wio.wait();
 
         dvui.backend.wio.update();
         // try_onTimer(clap_demo) catch unreachable;
+    }
+
+    fn draw(clap_demo: *ClapDemo) !void {
+        _ = clap_demo;
+
+        // yoinked from raylib
+        try win.begin(0);
+
+        // le drawing
+        var tl = dvui.textLayout(@src(), .{}, .{});
+        tl.addText("hello world", .{});
+        tl.deinit();
+
+        _ = try win.end(.{});
+
+        // backend.win.setCursor(win.cursorRequested());
     }
 };
