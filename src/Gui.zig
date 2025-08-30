@@ -1,3 +1,5 @@
+//! gui portion of the plugin. uses dvui
+
 const clap = @import("clap-bindings");
 const dvui = @import("dvui");
 
@@ -173,6 +175,7 @@ pub const timer_support = struct {
         _ = clap_demo;
 
         // yoinked from raylib
+        // see https://github.com/david-vanderson/dvui/blob/main/examples/raylib-standalone.zig
         try win.begin(0);
 
         // le drawing

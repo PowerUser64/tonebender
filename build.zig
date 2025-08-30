@@ -23,7 +23,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const wio_backend_mod = b.addModule("WioBackend", .{
-        .root_source_file = b.path("src/WioBackend.zig"),
+        .root_source_file = b.path("src/wio/WioBackend.zig"),
         .optimize = optimize,
         .target = target,
     });
@@ -46,6 +46,20 @@ pub fn build(b: *std.Build) void {
 
     const package_step = createPackageStep(b, lib);
     b.default_step = package_step;
+
+    /////////////////////////////////////////////////////////
+
+    const demo_exe = b.addExecutable(.{
+        .name = "wio-demo",
+        .root_source_file = b.path("src/wio/demo.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const demo_run = b.addRunArtifact(demo_exe);
+    const demo_step = b.step("wio-demo", "run wio backend demo");
+    demo_step.dependOn(&demo_run.step);
+
+    demo_exe.root_module.addImport("dvui", dvui_mod);
 }
 
 // technically you should not need this, but not all daws accept the plugin when
