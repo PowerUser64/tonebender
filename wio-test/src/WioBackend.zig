@@ -6,7 +6,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const dvui = @import("dvui");
 pub const wio = @import("wio");
-const gl = @import("zgl");
+const gl = @import("gl");
 
 const Self = @This();
 

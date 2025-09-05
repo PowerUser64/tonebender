@@ -5,8 +5,8 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe_mod = b.createModule(.{
-        .root_source_file = b.path("src/main.zig"),
-        // .root_source_file = b.path("src/test-zgl.zig"),
+        // .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/test-zgl.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -17,19 +17,20 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const zgl = b.dependency("zgl", .{
-        .target = target,
-        .optimize = optimize,
+    const gl_bindings = @import("zigglgen").generateBindingsModule(b, .{
+        .api = .gl,
+        .version = .@"4.6",
+        .profile = .core,
     });
-    wio_backend_mod.addImport("zgl", zgl.module("zgl"));
-    // exe_mod.addImport("zgl", zgl.module("zgl"));
+    // wio_backend_mod.addImport("gl", gl_bindings);
+    exe_mod.addImport("gl", gl_bindings);
 
     const wio = b.dependency("wio", .{
         .target = target,
         .optimize = optimize,
     });
-    wio_backend_mod.addImport("wio", wio.module("wio"));
-    // exe_mod.addImport("wio", wio.module("wio"));
+    // wio_backend_mod.addImport("wio", wio.module("wio"));
+    exe_mod.addImport("wio", wio.module("wio"));
 
     const dvui_dep = b.dependency("dvui", .{
         .target = target,

@@ -1,6 +1,9 @@
 const std = @import("std");
 const wio = @import("wio");
-const gl = @import("zgl");
+const gl = @import("gl");
+
+var win: wio.Window = undefined;
+var procs: gl.ProcTable = undefined;
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}).init;
@@ -10,23 +13,36 @@ pub fn main() !void {
     try wio.init(alloc, .{});
     defer wio.deinit();
 
-    var win = try wio.createWindow(.{
-        .opengl = .{ .major_version = 4, .minor_version = 5 },
+    win = try wio.createWindow(.{
+        .opengl = .{ .major_version = 4, .minor_version = 6 },
     });
     defer win.destroy();
 
     win.makeContextCurrent();
     win.swapInterval(1);
 
-    try gl.loadExtensions(void, glGetProcAddress);
+    if (!procs.init(glGetProcAddress)) return error.ProcInitfailed;
+    gl.makeProcTableCurrent(&procs);
+    defer gl.makeProcTableCurrent(null);
 
     try wio.run(loop);
 }
 
-fn glGetProcAddress(_: anytype, comptime name: [:0]const u8) gl.binding.FunctionPointer {
-    return wio.glGetProcAddress(name);
+fn glGetProcAddress(comptime name: [*:0]const u8) ?gl.PROC {
+    return wio.glGetProcAddress(std.mem.span(name));
 }
 
 fn loop() !bool {
-    return false;
+    while (win.getEvent()) |event| {
+        if (event == .mouse) continue;
+        std.log.info("{}", .{event});
+    }
+
+    gl.ClearColor(1, 0, 0, 1);
+    gl.Clear(gl.COLOR_BUFFER_BIT);
+
+    win.swapBuffers();
+
+    // wio.wait();
+    return true;
 }
