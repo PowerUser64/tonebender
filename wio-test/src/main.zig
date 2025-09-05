@@ -1,8 +1,11 @@
-//! dvui demo app goes here
+//! demo app
+//! copied from https://github.com/david-vanderson/dvui/blob/main/examples/raylib-standalone.zig
+//! and https://github.com/david-vanderson/dvui/blob/main/examples/sdl-standalone.zig
+//! also see wio example https://github.com/ypsvlq/wio/blob/master/example/main.zig
 
 const std = @import("std");
 const dvui = @import("dvui");
-const Backend = dvui.backend;
+const Backend = @import("backend");
 
 var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
 const gpa = gpa_instance.allocator();
@@ -29,6 +32,7 @@ pub fn main() !void {
     var backend = try Backend.init(gpa, .{
         .size = .{ .width = 800.0, .height = 600.0 },
         .title = "DVUI Raylib Standalone Example",
+        .opengl = .{ .major_version = 4, .minor_version = 5 },
     });
     defer backend.deinit();
 
@@ -62,7 +66,7 @@ pub fn main() !void {
 
         // if dvui widgets might not cover the whole window, then need to clear
         // the previous frame's render
-        // backend.clear();
+        backend.clear();
 
         const keep_running = dvui_frame();
         if (!keep_running) break :main_loop;

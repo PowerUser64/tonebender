@@ -17,49 +17,8 @@ pub fn build(b: *std.Build) void {
         clap_bindings.module("clap-bindings"),
     );
 
-    const wio = b.dependency("wio", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const wio_backend_mod = b.addModule("WioBackend", .{
-        .root_source_file = b.path("src/wio/WioBackend.zig"),
-        .optimize = optimize,
-        .target = target,
-    });
-    wio_backend_mod.addImport("wio", wio.module("wio"));
-
-    const zgl = b.dependency("zgl", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    wio_backend_mod.addImport("zgl", zgl.module("zgl"));
-
-    const dvui_dep = b.dependency("dvui", .{
-        .target = target,
-        .optimize = optimize,
-        .backend = .custom,
-    });
-    const dvui_mod = dvui_dep.module("dvui");
-    @import("dvui").linkBackend(dvui_mod, wio_backend_mod);
-    lib.root_module.addImport("dvui", dvui_mod);
-
     const package_step = createPackageStep(b, lib);
     b.default_step = package_step;
-
-    /////////////////////////////////////////////////////////
-
-    const demo_exe = b.addExecutable(.{
-        .name = "wio-demo",
-        .root_source_file = b.path("src/wio/demo.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const demo_run = b.addRunArtifact(demo_exe);
-    const demo_step = b.step("wio-demo", "run wio backend demo");
-    demo_step.dependOn(&demo_run.step);
-
-    demo_exe.root_module.addImport("dvui", dvui_mod);
 }
 
 // technically you should not need this, but not all daws accept the plugin when

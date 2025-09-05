@@ -1,5 +1,6 @@
 //! using raylib backend as example since it is opengl-ish
 //! see https://github.com/david-vanderson/dvui/blob/main/src/backends/raylib.zig
+//! and https://github.com/david-vanderson/dvui/blob/main/src/backends/sdl.zig
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -20,6 +21,7 @@ fn glGetProcAddress(_: anytype, comptime name: [:0]const u8) gl.binding.Function
 
 pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
     try wio.init(alloc, .{});
+
     var win = try wio.createWindow(options);
 
     win.makeContextCurrent();
