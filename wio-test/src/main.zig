@@ -46,7 +46,9 @@ pub fn main() !void {
     });
     defer win.deinit();
 
-    main_loop: while (true) {
+    backend.clear();
+
+    main_loop: while (false) {
         // c.BeginDrawing();
 
         // beginWait coordinates with waitTime below to run frames only when needed
@@ -66,9 +68,9 @@ pub fn main() !void {
 
         // if dvui widgets might not cover the whole window, then need to clear
         // the previous frame's render
-        backend.clear();
+        // backend.clear();
 
-        const keep_running = dvui_frame();
+        const keep_running = true; //dvui_frame();
         if (!keep_running) break :main_loop;
 
         // marks end of dvui frame, don't call dvui functions after this

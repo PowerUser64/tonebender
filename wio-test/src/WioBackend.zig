@@ -13,10 +13,10 @@ const Self = @This();
 alloc: std.mem.Allocator,
 win: wio.Window,
 arena: std.mem.Allocator = undefined,
-vao: gl.VertexArray,
+vao: gl.uint,
 
-fn glGetProcAddress(_: anytype, comptime name: [:0]const u8) gl.binding.FunctionPointer {
-    return wio.glGetProcAddress(name);
+fn glGetProcAddress(comptime name: [*:0]const u8) ?gl.PROC {
+    return wio.glGetProcAddress(std.mem.span(name));
 }
 
 pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
@@ -27,10 +27,15 @@ pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
     win.makeContextCurrent();
     win.swapInterval(1);
 
-    gl.loadExtensions(void, glGetProcAddress) catch unreachable;
+    var procs: gl.ProcTable = undefined;
+    if (!procs.init(glGetProcAddress)) return error.InitFailed;
+    gl.makeProcTableCurrent(&procs);
 
     // TODO: setup vertex format
-    const vao = gl.VertexArray.create();
+    var vao: gl.uint = undefined;
+    gl.CreateVertexArrays(1, &vao);
+
+    std.log.debug("init", .{});
 
     return .{
         .alloc = alloc,
@@ -40,7 +45,11 @@ pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
 }
 
 pub fn deinit(self: *Self) void {
-    self.vao.delete();
+    std.log.debug("deinit", .{});
+
+    // gl.DeleteVertexArrays(1, @ptrCast(&self.vao));
+
+    gl.makeProcTableCurrent(null);
 
     self.win.destroy();
     wio.deinit();
@@ -61,7 +70,8 @@ pub fn addAllEvents(self: *Self, win: *dvui.Window) !bool {
 }
 
 pub fn clear(_: *Self) void {
-    gl.clear(.{ .color = true });
+    std.log.debug("clear", .{});
+    gl.Clear(gl.COLOR_BUFFER_BIT);
 }
 
 pub fn setCursor(self: *Self, cursor: dvui.enums.Cursor) void {
