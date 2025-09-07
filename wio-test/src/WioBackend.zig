@@ -26,12 +26,16 @@ const vertexSource =
     \\layout (location = 2) in vec2 vertexTexCoord;
     \\out vec2 fragTexCoord;
     \\out vec4 fragColor;
-    \\uniform mat4 mvp;
+    \\uniform bool flipY;
+    \\uniform vec2 size;
     \\void main()
     \\{
     \\    fragTexCoord = vertexTexCoord;
     \\    fragColor = vertexColor / 255.0;
-    \\    gl_Position = mvp*vec4(vertexPosition, 0.0, 1.0);
+    \\    gl_Position.xy = vertexPosition / size;
+    \\    if (flipY) gl_Position.y = 1 - gl_Position.y;
+    \\    gl_Position.xy = gl_Position.xy * 2 - 1;
+    \\    gl_Position.zw = vec2(0, 1);
     \\}
 ;
 
@@ -53,6 +57,8 @@ const fragmentSource =
 ;
 
 var useTex_loc: gl.int = undefined;
+var size_loc: gl.int = undefined;
+var yFlip_loc: gl.int = undefined;
 
 pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
     try wio.init(alloc, .{}); // does global stuff. is that bad??
@@ -96,13 +102,16 @@ pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
 
     gl.VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, @sizeOf(dvui.Vertex), @offsetOf(dvui.Vertex, "pos"));
     gl.EnableVertexAttribArray(0);
-    gl.VertexAttribPointer(1, 4, gl.FLOAT, gl.FALSE, @sizeOf(dvui.Vertex), @offsetOf(dvui.Vertex, "col"));
+    gl.VertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, gl.FALSE, @sizeOf(dvui.Vertex), @offsetOf(dvui.Vertex, "col"));
     gl.EnableVertexAttribArray(1);
     gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, @sizeOf(dvui.Vertex), @offsetOf(dvui.Vertex, "uv"));
     gl.EnableVertexAttribArray(2);
 
     useTex_loc = gl.GetUniformLocation(program, "useTex");
+    size_loc = gl.GetUniformLocation(program, "size");
+    yFlip_loc = gl.GetUniformLocation(program, "yFlip");
 
+    // always premultipled alpha
     gl.Enable(gl.BLEND);
     gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.BlendEquation(gl.FUNC_ADD);
@@ -172,7 +181,7 @@ pub fn sleep(_: *Self, ns: u64) void {
     std.time.sleep(ns);
 }
 pub fn pixelSize(_: *Self) dvui.Size.Physical {
-    return .{ .w = 640, .h = 480 };
+    return .{ .w = 640, .h = 480 }; // TODO: stop lying
 }
 pub fn windowSize(_: *Self) dvui.Size.Natural {
     return .{ .w = 640, .h = 480 };
@@ -193,9 +202,25 @@ pub fn end(self: *Self) void {
 }
 
 pub fn drawClippedTriangles(_: *Self, texture: ?dvui.Texture, vtx: []const dvui.Vertex, idx: []const u16, maybe_clipr: ?dvui.Rect.Physical) !void {
+    var framebuffer: gl.int = undefined;
+    gl.GetIntegerv(gl.FRAMEBUFFER_BINDING, @ptrCast(&framebuffer));
+
+    if (framebuffer == 0) { // flip when backbuffer
+        gl.Uniform1i(yFlip_loc, 1);
+    } else {
+        gl.Uniform1i(yFlip_loc, 0);
+    }
+
     if (maybe_clipr) |clipr| {
         gl.Enable(gl.SCISSOR_TEST);
-        gl.Scissor(@intFromFloat(clipr.x), @intFromFloat(clipr.y), @intFromFloat(clipr.w), @intFromFloat(clipr.h));
+
+        // flip when backbuffer
+        if (framebuffer == 0) {
+            // TODO actually do it with fb size blah blah
+            gl.Scissor(@intFromFloat(clipr.x), @intFromFloat(clipr.y), @intFromFloat(clipr.w), @intFromFloat(clipr.h));
+        } else {
+            gl.Scissor(@intFromFloat(clipr.x), @intFromFloat(clipr.y), @intFromFloat(clipr.w), @intFromFloat(clipr.h));
+        }
     }
 
     if (texture) |tex| {
@@ -206,6 +231,8 @@ pub fn drawClippedTriangles(_: *Self, texture: ?dvui.Texture, vtx: []const dvui.
         gl.BindTexture(gl.TEXTURE_2D, 0);
         gl.Uniform1i(useTex_loc, 0);
     }
+
+    gl.Uniform2f(size_loc, 640, 480); // could set just on resize. meh.
 
     // TODO: do i want DYNAMIC_DRAW or STREAM_DRAW?
     gl.BufferData(gl.ARRAY_BUFFER, @intCast(@sizeOf(dvui.Vertex) * vtx.len), vtx.ptr, gl.STREAM_DRAW);
