@@ -61,14 +61,14 @@ pub fn main() !void {
         try win.begin(nstime);
 
         // send all events to dvui for processing
-        // const quit = try backend.addAllEvents(&win);
-        // if (quit) break :main_loop;
+        const quit = try backend.addAllEvents(&win);
+        if (quit) break :main_loop;
 
         // if dvui widgets might not cover the whole window, then need to clear
         // the previous frame's render
         backend.clear();
 
-        const keep_running = true; //dvui_frame();
+        const keep_running = dvui_frame();
         if (!keep_running) break :main_loop;
 
         // marks end of dvui frame, don't call dvui functions after this
@@ -76,12 +76,12 @@ pub fn main() !void {
         const end_micros = try win.end(.{});
 
         // cursor management
-        // backend.setCursor(win.cursorRequested());
+        backend.setCursor(win.cursorRequested());
 
         // waitTime and beginWait combine to achieve variable framerates
         const wait_event_micros = win.waitTime(end_micros, null);
         _ = wait_event_micros;
-        // backend.EndDrawingWaitEventTimeout(wait_event_micros);
+        // backend.waitEventTimeout(wait_event_micros);
 
         // Example of how to show a dialog from another thread (outside of win.begin/win.end)
         if (show_dialog_outside_frame) {
