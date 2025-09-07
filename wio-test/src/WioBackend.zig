@@ -12,6 +12,7 @@ const Self = @This();
 
 alloc: std.mem.Allocator,
 win: wio.Window,
+procs: *gl.ProcTable,
 arena: std.mem.Allocator = undefined,
 vao: gl.uint,
 
@@ -21,34 +22,35 @@ fn glGetProcAddress(comptime name: [*:0]const u8) ?gl.PROC {
 
 pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
     try wio.init(alloc, .{});
+    errdefer wio.deinit();
 
     var win = try wio.createWindow(options);
+    errdefer win.destroy();
 
     win.makeContextCurrent();
     win.swapInterval(1);
 
-    var procs: gl.ProcTable = undefined;
+    var procs = try alloc.create(gl.ProcTable);
+    errdefer alloc.destroy(procs);
     if (!procs.init(glGetProcAddress)) return error.InitFailed;
-    gl.makeProcTableCurrent(&procs);
+    gl.makeProcTableCurrent(procs);
 
     // TODO: setup vertex format
     var vao: gl.uint = undefined;
     gl.CreateVertexArrays(1, &vao);
 
-    std.log.debug("init", .{});
-
     return .{
         .alloc = alloc,
         .win = win,
+        .procs = procs,
         .vao = vao,
     };
 }
 
 pub fn deinit(self: *Self) void {
-    std.log.debug("deinit", .{});
+    gl.DeleteVertexArrays(1, @ptrCast(&self.vao));
 
-    // gl.DeleteVertexArrays(1, @ptrCast(&self.vao));
-
+    self.alloc.destroy(self.procs);
     gl.makeProcTableCurrent(null);
 
     self.win.destroy();
@@ -70,7 +72,6 @@ pub fn addAllEvents(self: *Self, win: *dvui.Window) !bool {
 }
 
 pub fn clear(_: *Self) void {
-    std.log.debug("clear", .{});
     gl.Clear(gl.COLOR_BUFFER_BIT);
 }
 
