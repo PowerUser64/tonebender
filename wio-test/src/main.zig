@@ -30,7 +30,7 @@ pub fn main() !void {
     // init Raylib backend (creates OS window)
     // initWindow() means the backend calls CloseWindow for you in deinit()
     var backend = try Backend.init(gpa, .{
-        .size = .{ .width = 640.0, .height = 480.0 },
+        .size = .{ .width = 800.0, .height = 600.0 },
         .title = "DVUI wio Standalone Example",
         .opengl = .{ .major_version = 4, .minor_version = 6 },
     });

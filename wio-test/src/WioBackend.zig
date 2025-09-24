@@ -13,6 +13,7 @@ const Self = @This();
 alloc: std.mem.Allocator,
 win: wio.Window,
 procs: *gl.ProcTable,
+size: wio.Size,
 arena: std.mem.Allocator = undefined,
 
 fn glGetProcAddress(comptime name: [*:0]const u8) ?gl.PROC {
@@ -58,7 +59,7 @@ const fragmentSource =
 
 var useTex_loc: gl.int = undefined;
 var size_loc: gl.int = undefined;
-var yFlip_loc: gl.int = undefined;
+var flipY_loc: gl.int = undefined;
 
 pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
     try wio.init(alloc, .{}); // does global stuff. is that bad??
@@ -90,7 +91,7 @@ pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
     gl.UseProgram(program);
 
     var vao: gl.uint = undefined;
-    gl.CreateVertexArrays(1, &vao);
+    gl.CreateVertexArrays(1, @ptrCast(&vao));
     var vbo: gl.uint = undefined;
     gl.CreateBuffers(1, @ptrCast(&vbo));
     var ebo: gl.uint = undefined;
@@ -109,7 +110,7 @@ pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
 
     useTex_loc = gl.GetUniformLocation(program, "useTex");
     size_loc = gl.GetUniformLocation(program, "size");
-    yFlip_loc = gl.GetUniformLocation(program, "yFlip");
+    flipY_loc = gl.GetUniformLocation(program, "flipY");
 
     // always premultipled alpha
     gl.Enable(gl.BLEND);
@@ -120,6 +121,7 @@ pub fn init(alloc: std.mem.Allocator, options: wio.CreateWindowOptions) !Self {
         .alloc = alloc,
         .win = win,
         .procs = procs,
+        .size = options.size,
     };
 }
 
@@ -140,9 +142,21 @@ pub fn backend(self: *Self) dvui.Backend {
 pub fn addAllEvents(self: *Self, win: *dvui.Window) !bool {
     _ = win;
     while (self.win.getEvent()) |event| {
+        if (event != .mouse) std.log.debug("event {}", .{event});
+
         switch (event) {
             .close => return true,
-            // TODO
+            .framebuffer => |size| {
+                _ = size;
+            },
+            .char => {},
+            .button_press => {},
+            .button_repeat => {},
+            .button_release => {},
+            .mouse => {},
+            .mouse_relative => {},
+            .scroll_vertical => {},
+            .scroll_horizontal => return true,
             else => {},
         }
     }
@@ -180,11 +194,12 @@ pub fn nanoTime(_: *Self) i128 {
 pub fn sleep(_: *Self, ns: u64) void {
     std.time.sleep(ns);
 }
-pub fn pixelSize(_: *Self) dvui.Size.Physical {
-    return .{ .w = 640, .h = 480 }; // TODO: stop lying
+pub fn pixelSize(self: *Self) dvui.Size.Physical {
+    return .{ .w = @floatFromInt(self.size.width), .h = @floatFromInt(self.size.height) };
 }
-pub fn windowSize(_: *Self) dvui.Size.Natural {
-    return .{ .w = 640, .h = 480 };
+pub fn windowSize(self: *Self) dvui.Size.Natural {
+    // dont care about dpi rn
+    return .{ .w = @floatFromInt(self.size.width), .h = @floatFromInt(self.size.height) };
 }
 pub fn contentScale(_: *Self) f32 {
     return 1;
@@ -201,14 +216,26 @@ pub fn end(self: *Self) void {
     wio.update();
 }
 
-pub fn drawClippedTriangles(_: *Self, texture: ?dvui.Texture, vtx: []const dvui.Vertex, idx: []const u16, maybe_clipr: ?dvui.Rect.Physical) !void {
-    var framebuffer: gl.int = undefined;
+pub fn drawClippedTriangles(self: *Self, texture: ?dvui.Texture, vtx: []const dvui.Vertex, idx: []const u16, maybe_clipr: ?dvui.Rect.Physical) !void {
+    var framebuffer: gl.uint = undefined;
     gl.GetIntegerv(gl.FRAMEBUFFER_BINDING, @ptrCast(&framebuffer));
 
+    var size: dvui.Size.Physical = undefined;
+
     if (framebuffer == 0) { // flip when backbuffer
-        gl.Uniform1i(yFlip_loc, 1);
+        gl.Uniform1i(flipY_loc, 1);
+
+        size = self.pixelSize();
     } else {
-        gl.Uniform1i(yFlip_loc, 0);
+        gl.Uniform1i(flipY_loc, 0);
+
+        var gl_texture: gl.uint = undefined;
+        gl.GetNamedFramebufferAttachmentParameteriv(framebuffer, gl.COLOR_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, @ptrCast(&gl_texture));
+        var width: gl.uint = undefined;
+        gl.GetTextureLevelParameteriv(gl_texture, 0, gl.TEXTURE_WIDTH, @ptrCast(&width));
+        var height: gl.uint = undefined;
+        gl.GetTextureLevelParameteriv(gl_texture, 0, gl.TEXTURE_HEIGHT, @ptrCast(&height));
+        size = .{ .w = @floatFromInt(width), .h = @floatFromInt(height) };
     }
 
     if (maybe_clipr) |clipr| {
@@ -216,8 +243,7 @@ pub fn drawClippedTriangles(_: *Self, texture: ?dvui.Texture, vtx: []const dvui.
 
         // flip when backbuffer
         if (framebuffer == 0) {
-            // TODO actually do it with fb size blah blah
-            gl.Scissor(@intFromFloat(clipr.x), @intFromFloat(clipr.y), @intFromFloat(clipr.w), @intFromFloat(clipr.h));
+            gl.Scissor(@intFromFloat(clipr.x), @intFromFloat(size.h - clipr.y - clipr.h), @intFromFloat(clipr.w), @intFromFloat(clipr.h));
         } else {
             gl.Scissor(@intFromFloat(clipr.x), @intFromFloat(clipr.y), @intFromFloat(clipr.w), @intFromFloat(clipr.h));
         }
@@ -232,9 +258,8 @@ pub fn drawClippedTriangles(_: *Self, texture: ?dvui.Texture, vtx: []const dvui.
         gl.Uniform1i(useTex_loc, 0);
     }
 
-    gl.Uniform2f(size_loc, 640, 480); // could set just on resize. meh.
+    gl.Uniform2f(size_loc, size.w, size.h); // could set just on resize. meh.
 
-    // TODO: do i want DYNAMIC_DRAW or STREAM_DRAW?
     gl.BufferData(gl.ARRAY_BUFFER, @intCast(@sizeOf(dvui.Vertex) * vtx.len), vtx.ptr, gl.STREAM_DRAW);
     gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, @intCast(@sizeOf(u16) * idx.len), idx.ptr, gl.STREAM_DRAW);
 
