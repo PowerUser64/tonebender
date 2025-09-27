@@ -4,9 +4,11 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
+
 const dvui = @import("dvui");
-pub const wio = @import("wio");
+pub const kind = dvui.enums.Backend.custom;
 const gl = @import("gl");
+pub const wio = @import("wio");
 
 const Self = @This();
 
@@ -140,23 +142,56 @@ pub fn backend(self: *Self) dvui.Backend {
 }
 
 pub fn addAllEvents(self: *Self, win: *dvui.Window) !bool {
-    _ = win;
     while (self.win.getEvent()) |event| {
-        if (event != .mouse) std.log.debug("event {}", .{event});
+        // if (event != .mouse) std.log.debug("event {}", .{event});
 
         switch (event) {
             .close => return true,
             .framebuffer => |size| {
-                _ = size;
+                self.size = size;
+                gl.Viewport(0, 0, size.width, size.height);
             },
-            .char => {},
-            .button_press => {},
-            .button_repeat => {},
-            .button_release => {},
-            .mouse => {},
-            .mouse_relative => {},
-            .scroll_vertical => {},
-            .scroll_horizontal => return true,
+            .button_press => |button| {
+                if (wioButtonIsKey(button)) {
+                    _ = try win.addEventKey(.{
+                        .action = .up,
+                        .code = wioButtonToDvuiKey(button),
+                        .mod = .none,
+                    });
+                } else {
+                    _ = try win.addEventMouseButton(wioButtonToDvuiMouse(button), .press);
+                }
+            },
+            .button_repeat => |button| {
+                _ = try win.addEventKey(.{
+                    .action = .repeat,
+                    .code = wioButtonToDvuiKey(button),
+                    .mod = .none,
+                });
+            },
+            .button_release => |button| {
+                if (wioButtonIsKey(button)) {
+                    _ = try win.addEventKey(.{
+                        .action = .down,
+                        .code = wioButtonToDvuiKey(button),
+                        .mod = .none,
+                    });
+                } else {
+                    _ = try win.addEventMouseButton(wioButtonToDvuiMouse(button), .release);
+                }
+            },
+            .mouse => |pos| {
+                _ = try win.addEventMouseMotion(.{
+                    .x = @floatFromInt(pos.x),
+                    .y = @floatFromInt(pos.y),
+                });
+            },
+            .scroll_vertical => |ticks| {
+                _ = try win.addEventMouseWheel(-ticks * 10, .vertical);
+            },
+            .scroll_horizontal => |ticks| {
+                _ = try win.addEventMouseWheel(-ticks * 10, .horizontal);
+            },
             else => {},
         }
     }
@@ -186,7 +221,36 @@ pub fn setCursor(self: *Self, cursor: dvui.enums.Cursor) void {
 
 ///////////////////////////////////////////////////////////
 
-pub const kind = dvui.enums.Backend.custom;
+fn wioButtonIsKey(button: wio.Button) bool {
+    return switch (button) {
+        .mouse_left,
+        .mouse_right,
+        .mouse_middle,
+        .mouse_back,
+        .mouse_forward,
+        => false,
+        else => true,
+    };
+}
+
+fn wioButtonToDvuiKey(button: wio.Button) dvui.enums.Key {
+    _ = button; // autofix
+    std.log.debug("do not press keys or i will hurt you", .{});
+    return .a;
+}
+
+fn wioButtonToDvuiMouse(button: wio.Button) dvui.enums.Button {
+    return switch (button) {
+        .mouse_left => dvui.enums.Button.left,
+        .mouse_right => dvui.enums.Button.right,
+        .mouse_middle => dvui.enums.Button.middle,
+        .mouse_back => dvui.enums.Button.four,
+        .mouse_forward => dvui.enums.Button.five,
+        else => unreachable,
+    };
+}
+
+///////////////////////////////////////////////////////////
 
 pub fn nanoTime(_: *Self) i128 {
     return std.time.nanoTimestamp();
@@ -326,9 +390,26 @@ pub fn textureReadTarget(_: *Self, texture: dvui.TextureTarget, pixels: [*]u8) !
     gl.GetTextureImage(gl_texture, 0, gl.RGBA, gl.UNSIGNED_BYTE, @intCast(texture.width * texture.height * 4), pixels);
 }
 
-pub fn renderTarget(_: *Self, texture: ?dvui.TextureTarget) !void {
-    const framebuffer: gl.uint = if (texture) |tex| @intCast(@intFromPtr(tex.ptr)) else 0;
-    gl.BindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+pub fn renderTarget(self: *Self, texture: ?dvui.TextureTarget) !void {
+    if (texture) |tex| {
+        const framebuffer: gl.uint = @intCast(@intFromPtr(tex.ptr));
+        gl.BindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+
+        var gl_texture: gl.uint = undefined;
+        gl.GetNamedFramebufferAttachmentParameteriv(framebuffer, gl.COLOR_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, @ptrCast(&gl_texture));
+        var width: gl.uint = undefined;
+        gl.GetTextureLevelParameteriv(gl_texture, 0, gl.TEXTURE_WIDTH, @ptrCast(&width));
+        var height: gl.uint = undefined;
+        gl.GetTextureLevelParameteriv(gl_texture, 0, gl.TEXTURE_HEIGHT, @ptrCast(&height));
+
+        gl.Viewport(0, 0, @intCast(width), @intCast(height));
+        std.log.debug("please use this sized skaldkld kasldk {}", .{.{ width, height }});
+    } else {
+        gl.BindFramebuffer(gl.FRAMEBUFFER, 0);
+
+        gl.Viewport(0, 0, self.size.width, self.size.height);
+        std.log.debug("please use this size {}", .{self.size});
+    }
 }
 
 pub fn clipboardText(self: *Self) ![]const u8 {
