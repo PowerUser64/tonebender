@@ -235,8 +235,7 @@ fn wioButtonIsKey(button: wio.Button) bool {
 
 fn wioButtonToDvuiKey(button: wio.Button) dvui.enums.Key {
     _ = button; // autofix
-    std.log.debug("do not press keys or i will hurt you", .{});
-    return .a;
+    return .a; // audio plugins dont use keys
 }
 
 fn wioButtonToDvuiMouse(button: wio.Button) dvui.enums.Button {
@@ -403,12 +402,10 @@ pub fn renderTarget(self: *Self, texture: ?dvui.TextureTarget) !void {
         gl.GetTextureLevelParameteriv(gl_texture, 0, gl.TEXTURE_HEIGHT, @ptrCast(&height));
 
         gl.Viewport(0, 0, @intCast(width), @intCast(height));
-        std.log.debug("please use this sized skaldkld kasldk {}", .{.{ width, height }});
     } else {
         gl.BindFramebuffer(gl.FRAMEBUFFER, 0);
 
         gl.Viewport(0, 0, self.size.width, self.size.height);
-        std.log.debug("please use this size {}", .{self.size});
     }
 }
 
