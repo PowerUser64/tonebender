@@ -1,5 +1,24 @@
-.zig-cache
-zig-out
+# zig
+.zig-cache/
+zig-out/
 
-.stfolder
+# syncthing
+.stfolder/
 .stignore
+
+# gdb
+.gdb_history
+
+# logs
+*.log
+
+# c out files
+*.out
+
+## Faust
+# generated
+*.gen.*
+# faust dsp files
+*.dsp
+!/faust/sine.dsp
+
