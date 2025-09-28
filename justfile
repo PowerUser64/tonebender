@@ -10,5 +10,5 @@ validate: build
 bwlog:
    ./bin/bitwig-log-follow.sh
 
-generate-faust $DSP="tonebender":
-   ./faust/generate-c-code.sh "$DSP"
+generate-faust:
+   ./faust/generate-c-code.sh
