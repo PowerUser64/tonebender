@@ -137,11 +137,11 @@ pub const timer_support = struct {
     };
 
     pub fn registerTimer(clap_demo: *ClapDemo) void {
-        const host: *const clap.ext.timer_support.Host = @alignCast(@ptrCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.timer_support.id)));
+        const host: *const clap.ext.timer_support.Host = @ptrCast(@alignCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.timer_support.id)));
         _ = host.registerTimer(clap_demo.host, 1000 / 60, &timerId);
     }
     pub fn unregisterTimer(clap_demo: *ClapDemo) void {
-        const host: *const clap.ext.timer_support.Host = @alignCast(@ptrCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.timer_support.id)));
+        const host: *const clap.ext.timer_support.Host = @ptrCast(@alignCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.timer_support.id)));
         _ = host.unregisterTimer(clap_demo.host, timerId);
     }
 
@@ -155,7 +155,7 @@ pub const timer_support = struct {
 
             switch (event) {
                 .close => {
-                    const host: *const clap.ext.gui.Host = @alignCast(@ptrCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.gui.id)));
+                    const host: *const clap.ext.gui.Host = @ptrCast(@alignCast(clap_demo.host.getExtension(clap_demo.host, clap.ext.gui.id)));
                     host.closed(clap_demo.host, true);
                     return;
                 },
