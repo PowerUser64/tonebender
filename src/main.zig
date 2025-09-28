@@ -1,6 +1,6 @@
 const std = @import("std");
 const clap = @import("clap-bindings");
-const ClapDemo = @import("ClapDemo.zig");
+const Tonebender = @import("Tonebender.zig");
 
 export const clap_entry = clap.Entry{
     .version = clap.version,
@@ -22,13 +22,13 @@ fn deinit() callconv(.C) void {
 
 fn getFactory(id: [*:0]const u8) callconv(.C) ?*const anyopaque {
     if (std.mem.orderZ(u8, id, clap.PluginFactory.id) == .eq) {
-        return &demo_factory;
+        return &tonebender_factory;
     } else {
         return null;
     }
 }
 
-const demo_factory = clap.PluginFactory{
+const tonebender_factory = clap.PluginFactory{
     .getPluginCount = getPluginCount,
     .getPluginDescriptor = getPluginDescriptor,
     .createPlugin = createPlugin,
@@ -40,7 +40,7 @@ fn getPluginCount(_: *const clap.PluginFactory) callconv(.C) u32 {
 
 fn getPluginDescriptor(_: *const clap.PluginFactory, index: u32) callconv(.C) ?*const clap.Plugin.Descriptor {
     if (index == 0) {
-        return &ClapDemo.desc;
+        return &Tonebender.desc;
     } else {
         return null;
     }
@@ -52,9 +52,9 @@ fn createPlugin(
     id: [*:0]const u8,
 ) callconv(.C) ?*const clap.Plugin {
     if (host.clap_version.isCompatible() and
-        std.mem.orderZ(u8, id, ClapDemo.desc.id) == .eq)
+        std.mem.orderZ(u8, id, Tonebender.desc.id) == .eq)
     {
-        const plugin = ClapDemo.create(host, gpa.allocator()) catch return null;
+        const plugin = Tonebender.create(host, gpa.allocator()) catch return null;
         return plugin;
     } else {
         return null;

@@ -1,7 +1,7 @@
 const std = @import("std");
 const clap = @import("clap-bindings");
 
-// const Gui = @import("Gui.zig");
+const Gui = @import("Gui.zig");
 
 const c = @cImport({
     @cInclude("mydsp.gen.c");
@@ -11,14 +11,14 @@ const c = @cImport({
 
 pub const desc = clap.Plugin.Descriptor{
     .clap_version = clap.version,
-    .id = "com.interpunct.clap-demo",
-    .name = "clap demo synth",
-    .vendor = "interpunct",
-    .url = "eva.fish",
+    .id = "com.bnw.tonebender",
+    .name = "Tonebender synthesizer",
+    .vendor = "bnw",
+    .url = "blake.ly",
     .manual_url = "",
     .support_url = "",
     .version = "1.0.0",
-    .description = "a simple synth to show some CLAP features.",
+    .description = "a tone-bending synthesizer",
     .features = &[_:null]?[*:0]const u8{
         clap.Plugin.features.instrument,
         clap.Plugin.features.synthesizer,
@@ -38,13 +38,13 @@ pub fn fromPlugin(plugin: *const clap.Plugin) *@This() {
 }
 
 pub fn create(host: *const clap.Host, allocator: std.mem.Allocator) !*const clap.Plugin {
-    const clap_demo = try allocator.create(@This());
-    errdefer allocator.destroy(clap_demo);
-    clap_demo.* = .{
+    const tonebender = try allocator.create(@This());
+    errdefer allocator.destroy(tonebender);
+    tonebender.* = .{
         .allocator = allocator,
         .plugin = .{
             .descriptor = &desc,
-            .plugin_data = clap_demo,
+            .plugin_data = tonebender,
             .init = init,
             .destroy = destroy,
             .activate = activate,
@@ -60,23 +60,23 @@ pub fn create(host: *const clap.Host, allocator: std.mem.Allocator) !*const clap
         // we set these in the init function
         .dsp = undefined,
     };
-    return &clap_demo.plugin;
+    return &tonebender.plugin;
 }
 
 fn init(plugin: *const clap.Plugin) callconv(.C) bool {
-    var clap_demo = fromPlugin(plugin);
+    var tonebender = fromPlugin(plugin);
 
-    clap_demo.dsp = c.newmydsp();
+    tonebender.dsp = c.newmydsp();
 
     return true;
 }
 
 fn destroy(plugin: *const clap.Plugin) callconv(.C) void {
-    var clap_demo = fromPlugin(plugin);
+    var tonebender = fromPlugin(plugin);
 
-    c.deletemydsp(clap_demo.dsp);
+    c.deletemydsp(tonebender.dsp);
 
-    clap_demo.allocator.destroy(clap_demo);
+    tonebender.allocator.destroy(tonebender);
 }
 
 fn activate(
@@ -85,9 +85,9 @@ fn activate(
     _: u32,
     _: u32,
 ) callconv(.C) bool {
-    var clap_demo = fromPlugin(plugin);
-    c.initmydsp(clap_demo.dsp, @intFromFloat(@round(sample_rate)));
-    clap_demo.sample_rate = sample_rate;
+    var tonebender = fromPlugin(plugin);
+    c.initmydsp(tonebender.dsp, @intFromFloat(@round(sample_rate)));
+    tonebender.sample_rate = sample_rate;
     return true;
 }
 
@@ -107,7 +107,7 @@ fn process(plugin: *const clap.Plugin, clap_process: *const clap.Process) callco
         return .sleep;
     }
 
-    const clap_demo = fromPlugin(plugin);
+    const tonebender = fromPlugin(plugin);
 
     const out = clap_process.audio_outputs[0].data32.?;
     const channel_count = clap_process.audio_outputs[0].channel_count;
@@ -118,7 +118,7 @@ fn process(plugin: *const clap.Plugin, clap_process: *const clap.Process) callco
     _ = event_count; // autofix
 
     c.computemydsp(
-        clap_demo.dsp,
+        tonebender.dsp,
         @intCast(clap_process.frames_count),
         null,
         @ptrCast(out),
@@ -133,8 +133,8 @@ fn process(plugin: *const clap.Plugin, clap_process: *const clap.Process) callco
     return .@"continue";
 }
 
-fn handleInboundEvent(clap_demo: *@This(), event_header: *const clap.events.Header) void {
-    _ = clap_demo; // autofix
+fn handleInboundEvent(tonebender: *@This(), event_header: *const clap.events.Header) void {
+    _ = tonebender; // autofix
 
     if (event_header.space_id != clap.events.core_space_id) {
         return;

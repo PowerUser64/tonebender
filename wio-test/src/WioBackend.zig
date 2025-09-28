@@ -8,7 +8,7 @@ const builtin = @import("builtin");
 const dvui = @import("dvui");
 pub const kind = dvui.enums.Backend.custom;
 const gl = @import("gl");
-pub const wio = @import("wio");
+const wio = @import("wio");
 
 const Self = @This();
 

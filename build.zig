@@ -7,11 +7,12 @@ pub fn build(b: *std.Build) void {
     const clap_bindings = b.dependency("clap_bindings", .{});
 
     const lib = b.addSharedLibrary(.{
-        .name = "clap-demo",
+        .name = "tonebender",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
+
+        .link_libc = true, // faust needs libc
     });
     lib.root_module.addImport(
         "clap-bindings",
@@ -22,6 +23,38 @@ pub fn build(b: *std.Build) void {
     lib.root_module.addIncludePath(b.path("src/c"));
     lib.root_module.addCMacro("min(a,b)", "(((a) > (b)) ? (a) : (b))");
     lib.root_module.addCMacro("max(a,b)", "(((a) < (b)) ? (a) : (b))");
+
+    // wio and dvui
+    {
+        const wio_backend_mod = b.createModule(.{
+            .root_source_file = b.path("src/WioBackend.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+
+        const gl_bindings = @import("zigglgen").generateBindingsModule(b, .{
+            .api = .gl,
+            .version = .@"4.6",
+            .profile = .core,
+        });
+        wio_backend_mod.addImport("gl", gl_bindings);
+
+        const wio = b.dependency("wio", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        wio_backend_mod.addImport("wio", wio.module("wio"));
+
+        const dvui_dep = b.dependency("dvui", .{
+            .target = target,
+            .optimize = optimize,
+            .backend = .custom,
+        });
+        const dvui_mod = dvui_dep.module("dvui");
+        @import("dvui").linkBackend(dvui_mod, wio_backend_mod);
+        lib.root_module.addImport("dvui", dvui_mod);
+        lib.root_module.addImport("backend", wio_backend_mod);
+    }
 
     const package_step = createPackageStep(b, lib);
     b.default_step = package_step;
@@ -43,7 +76,7 @@ fn createPackageStep(b: *std.Build, lib: *std.Build.Step.Compile) *std.Build.Ste
                     .version = "1.0.0",
                     .region = "English",
                     .executable = clap_name,
-                    .identifier = b.fmt("com.interpunct.clap.{s}", .{lib.name}),
+                    .identifier = b.fmt("com.bnw.tonebender.{s}", .{lib.name}),
                     .name = clap_name,
                 },
             );

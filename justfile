@@ -1,3 +1,5 @@
+default := 'build'
+
 build: generate-faust
    anyzig 0.14.1 build
 

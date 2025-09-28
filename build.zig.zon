@@ -1,11 +1,11 @@
 .{
-    .name = .clap_demo,
+    .name = .tonebender,
     .version = "1.0.0",
-    .fingerprint = 0x6f050e0d1ad2d6f5,
+    .fingerprint = 0xa555e878cd35929f,
     .dependencies = .{
         .clap_bindings = .{
-            .url = "git+https://git.sr.ht/~interpunct/clap-zig-bindings#70819dd9503b19c7e4e4e2a2d865fac8f4dc24e9",
-            .hash = "clap_bindings-1.0.3-9TIcDTQ4AQCPAo60sZbsKCOePA-j6u4BWq2uqEuBHyvl",
+            .url = "git+https://git.sr.ht/~interpunct/clap-zig-bindings#c9214959a61fac3cd46925f0e5c15e7042c8be01",
+            .hash = "clap_bindings-1.0.3-9TIcDTU4AQA_9xny0CgWy1x9TneujksAo-xzV1rFBqBB",
         },
         .dvui = .{
             .url = "git+https://github.com/david-vanderson/dvui#ca018d707a62a4dc056f7cc0f466015cc0758ebe",
@@ -15,9 +15,9 @@
             .url = "git+https://github.com/ypsvlq/wio#c41a2a19cbf2ec2c12c70a1fb2bf9d780c93722b",
             .hash = "wio-0.0.0-8xHrr-GrBADTqD32Z3W7KBsje7i53P7bKmVGw9jRrYsA",
         },
-        .zgl = .{
-            .url = "git+https://github.com/ziglibs/zgl#caf811fb8b778184128772e57dfcb96be2351c43",
-            .hash = "zgl-1.1.0-p_NpAJJECgDSDHYHH_W6rX0snxnFoJ4JZZ0FV5_vqjjy",
+        .zigglgen = .{
+            .url = "git+https://github.com/castholm/zigglgen.git#048d4a859bac9eb17743ede5dcab8b9dfa06ab6e",
+            .hash = "zigglgen-0.4.0-bmyqLYHOLgBMnx2o3NRCxM0pqTZ2k72nUBkL5xCm5sU-",
         },
     },
     .paths = .{
