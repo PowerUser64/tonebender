@@ -1,10 +1,12 @@
 #!/bin/bash
 
+dsp=("${@:-mydsp.dsp}")
+
 # generate code to tmp file
-faust ./tonebender.dsp -o ./tonebender.gen.c.tmp -lang c
+faust "${dsp[@]}" -o ./mydsp.gen.c.tmp -lang c
 
 # combine to actual file, prepending faust header
-cat <(echo '#include "faust.h"') ./tonebender.gen.c.tmp > ./tonebender.gen.c
+cat <(echo '#include "faust.h"') ./mydsp.gen.c.tmp > ./mydsp.gen.c
 
 # cleanup
-rm ./tonebender.gen.c.tmp
+rm ./mydsp.gen.c.tmp
