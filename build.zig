@@ -11,11 +11,17 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
     lib.root_module.addImport(
         "clap-bindings",
         clap_bindings.module("clap-bindings"),
     );
+
+    // Faust and C code
+    lib.root_module.addIncludePath(b.path("src/c"));
+    lib.root_module.addCMacro("min(a,b)", "(((a) > (b)) ? (a) : (b))");
+    lib.root_module.addCMacro("max(a,b)", "(((a) < (b)) ? (a) : (b))");
 
     const package_step = createPackageStep(b, lib);
     b.default_step = package_step;
