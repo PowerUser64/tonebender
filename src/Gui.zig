@@ -62,13 +62,13 @@ pub const gui = struct {
     fn isApiSupported(plugin: *const clap.Plugin, api: [*:0]const u8, is_floating: bool) callconv(.C) bool {
         var tonebender = Tonebender.fromPlugin(plugin);
         tonebender.log("isApiSupported {s} {}", .{ api, is_floating });
-        return is_floating == false;
+        return is_floating == true;
     }
     fn getPreferredApi(plugin: *const clap.Plugin, api: *[*:0]const u8, is_floating: *bool) callconv(.C) bool {
         var tonebender = Tonebender.fromPlugin(plugin);
 
         api.* = clap.ext.gui.window_api.wayland;
-        is_floating.* = false;
+        is_floating.* = true;
 
         tonebender.log("getPreferredApi {s} {}", .{ api.*, is_floating.* });
         return true;
@@ -153,7 +153,7 @@ pub const timer_support = struct {
 
         win.begin(0) catch unreachable;
 
-        const quit = backend.addAllEvents(win) catch unreachable;
+        const quit = backend.addAllEvents(&win) catch unreachable;
         if (quit) {
             const host: *const clap.ext.gui.Host = @ptrCast(@alignCast(tonebender.host.getExtension(tonebender.host, clap.ext.gui.id)));
             host.closed(tonebender.host, true);

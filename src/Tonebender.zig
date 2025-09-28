@@ -31,7 +31,7 @@ plugin: clap.Plugin,
 host: *const clap.Host,
 sample_rate: ?f64 = null,
 
-dsp: [*c]c.mydsp,
+dsp: [*c]c.mydsp = null, // set in init. should make this not c pointer at some point
 
 pub fn fromPlugin(plugin: *const clap.Plugin) *@This() {
     return @ptrCast(@alignCast(plugin.plugin_data));
@@ -57,25 +57,19 @@ pub fn create(host: *const clap.Host, allocator: std.mem.Allocator) !*const clap
             .onMainThread = onMainThread,
         },
         .host = host,
-        // we set these in the init function
-        .dsp = undefined,
     };
     return &tonebender.plugin;
 }
 
 fn init(plugin: *const clap.Plugin) callconv(.C) bool {
     var tonebender = fromPlugin(plugin);
-
     tonebender.dsp = c.newmydsp();
-
     return true;
 }
 
 fn destroy(plugin: *const clap.Plugin) callconv(.C) void {
     var tonebender = fromPlugin(plugin);
-
     c.deletemydsp(tonebender.dsp);
-
     tonebender.allocator.destroy(tonebender);
 }
 
@@ -108,27 +102,28 @@ fn process(plugin: *const clap.Plugin, clap_process: *const clap.Process) callco
     }
 
     const tonebender = fromPlugin(plugin);
+    _ = tonebender; // autofix
 
     const out = clap_process.audio_outputs[0].data32.?;
     const channel_count = clap_process.audio_outputs[0].channel_count;
-    _ = channel_count; // autofix
 
     const events = clap_process.in_events;
     const event_count = events.size(events);
     _ = event_count; // autofix
 
-    c.computemydsp(
-        tonebender.dsp,
-        @intCast(clap_process.frames_count),
-        null,
-        @ptrCast(out),
-    );
+    // c.computemydsp(
+    //     tonebender.dsp,
+    //     @intCast(clap_process.frames_count),
+    //     null,
+    //     @ptrCast(out),
+    // );
 
-    // for (out[0..channel_count]) |channel| {
-    //     for (channel, 0..clap_process.frames_count) |*frame, i| {
-    //         std.log.debug("sample {}: {}", .{ i, frame.* });
-    //     }
-    // }
+    for (out[0..channel_count]) |channel| {
+        for (channel, 0..clap_process.frames_count) |*frame, i| {
+            const x: f32 = @floatFromInt(i);
+            frame.* = @sin(x);
+        }
+    }
 
     return .@"continue";
 }
@@ -165,9 +160,9 @@ fn getExtension(_: *const clap.Plugin, id: [*:0]const u8) callconv(.C) ?*const a
     } else if (eql(clap.ext.params.id, id)) {
         return null; //&params.extension;
     } else if (eql(clap.ext.gui.id, id)) {
-        return null; //&Gui.gui.extension;
+        return &Gui.gui.extension;
     } else if (eql(clap.ext.timer_support.id, id)) {
-        return null; //&Gui.timer_support.extension;
+        return &Gui.timer_support.extension;
     } else {
         return null;
     }

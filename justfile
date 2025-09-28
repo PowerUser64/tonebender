@@ -12,5 +12,8 @@ validate: build
 bwlog:
    ./bin/bitwig-log-follow.sh
 
-generate-faust:
+generate-faust: init-faust-symlink
    ./faust/generate-c-code.sh
+
+init-faust-symlink dsp='':
+   ./bin/init-faust-symlink.sh '{{dsp}}'

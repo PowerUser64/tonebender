@@ -5,4 +5,4 @@ repo_dir="$(git -C "$script_dir" rev-parse --show-toplevel)"
 
 cd "$repo_dir"
 
-clap-validator validate "$@" -i com.bnw.tonebender ./zig-out/lib/tonebender.clap
+clap-validator validate "$@" ./zig-out/lib/tonebender.clap
