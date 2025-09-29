@@ -32,6 +32,6 @@ elif [ -f "$linktarget" ]; then
    link
 else
    # skip if no input and the file is already created
-   echo "skipping"
+   echo "done, skipping"
 fi
 
