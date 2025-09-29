@@ -17,3 +17,7 @@ generate-faust: init-faust-symlink
 
 init-faust-symlink dsp='':
    ./bin/init-faust-symlink.sh '{{dsp}}'
+
+install: build
+   mkdir -p ~/.clap
+   ln -rs ./zig-out/lib/tonebender.clap ~/.clap

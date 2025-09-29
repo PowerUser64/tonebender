@@ -11,3 +11,9 @@ plugin with the Zig programming language.
 > repository after there is a stable public release. Until then, you'll have to
 > wait in suspense!
 
+## Usage
+
+- install just, faust, and anyzig (or edit the just file to use zig 0.14.1)
+- run `just`, which will symblink faust/sine.dsp to faust/mydsp.dsp, make a c file with faust, and then zig build
+
+> this could be done entirely with the zig build system instead :P
