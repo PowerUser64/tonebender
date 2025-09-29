@@ -12,7 +12,7 @@ cd "$repo_dir"
 
 repo_dir_rel="$(realpath --relative-to=. "$repo_dir")"
 
-linktarget=mydsp.dsp
+linktarget="$repo_dir_rel"/faust/mydsp.dsp
 
 echodo() {
    echo + "$@"
@@ -20,13 +20,13 @@ echodo() {
 }
 
 link() {
-   echodo ln -rsf "$repo_dir_rel"/faust/"$dsp" "$repo_dir_rel"/faust/"$linktarget"
+   echodo ln -rsf "$repo_dir_rel"/faust/"$dsp" "$linktarget"
 }
 
 if [ -n "$dsp" ]; then
    dsp="$dsp.dsp"
    link
-elif [ -f "$linktarget" ]; then
+elif ! [ -f "$linktarget" ]; then
    # use default -- no input, and file doesn't already exist
    dsp="$default.dsp"
    link
