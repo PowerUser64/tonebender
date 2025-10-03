@@ -6,7 +6,7 @@ const Backend = @import("backend");
 
 const Tonebender = @import("Tonebender.zig");
 
-// will globals explode? idk
+// will globals explode? yes
 var win: dvui.Window = undefined;
 var backend: Backend = undefined;
 var timerId: clap.Id = undefined;
