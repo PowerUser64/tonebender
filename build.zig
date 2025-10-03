@@ -24,36 +24,15 @@ pub fn build(b: *std.Build) void {
     lib.root_module.addCMacro("min(a,b)", "(((a) > (b)) ? (a) : (b))");
     lib.root_module.addCMacro("max(a,b)", "(((a) < (b)) ? (a) : (b))");
 
-    // wio and dvui
+    // NOT wio and yes dvui
     {
-        const wio_backend_mod = b.createModule(.{
-            .root_source_file = b.path("src/WioBackend.zig"),
-            .target = target,
-            .optimize = optimize,
-        });
-
-        const gl_bindings = @import("zigglgen").generateBindingsModule(b, .{
-            .api = .gl,
-            .version = .@"4.6",
-            .profile = .core,
-        });
-        wio_backend_mod.addImport("gl", gl_bindings);
-
-        const wio = b.dependency("wio", .{
-            .target = target,
-            .optimize = optimize,
-        });
-        wio_backend_mod.addImport("wio", wio.module("wio"));
-
         const dvui_dep = b.dependency("dvui", .{
             .target = target,
             .optimize = optimize,
-            .backend = .custom,
+            .backend = .sdl3,
         });
-        const dvui_mod = dvui_dep.module("dvui");
-        @import("dvui").linkBackend(dvui_mod, wio_backend_mod);
-        lib.root_module.addImport("dvui", dvui_mod);
-        lib.root_module.addImport("backend", wio_backend_mod);
+        lib.root_module.addImport("dvui", dvui_dep.module("dvui_sdl3"));
+        lib.root_module.addImport("backend", dvui_dep.module("sdl3"));
     }
 
     const package_step = createPackageStep(b, lib);

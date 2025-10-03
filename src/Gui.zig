@@ -34,7 +34,13 @@ pub const gui = struct {
         var tonebender = Tonebender.fromPlugin(plugin);
         tonebender.log("create {?s} {}", .{ api, is_floating });
 
-        backend = Backend.init(tonebender.allocator, .{ .opengl = .{ .major_version = 4, .minor_version = 6 } }) catch unreachable;
+        backend = Backend.initWindow(.{
+            .allocator = tonebender.allocator,
+            .size = .{ .w = 800.0, .h = 600.0 },
+            .min_size = .{ .w = 250.0, .h = 350.0 },
+            .title = "joe mama",
+            .vsync = false,
+        }) catch unreachable;
         win = dvui.Window.init(@src(), tonebender.allocator, backend.backend(), .{}) catch unreachable;
         timer_support.registerTimer(tonebender);
 
@@ -54,7 +60,7 @@ pub const gui = struct {
         var tonebender = Tonebender.fromPlugin(plugin);
         tonebender.log("setParent {s} {}", .{ window.api, window.data.ptr });
 
-        backend.win.setParent(@intFromPtr(window.data.ptr));
+        // no :)
 
         return true;
     }
@@ -81,8 +87,9 @@ pub const gui = struct {
     fn getSize(plugin: *const clap.Plugin, width: *u32, height: *u32) callconv(.C) bool {
         var tonebender = Tonebender.fromPlugin(plugin);
 
-        width.* = backend.size.width;
-        height.* = backend.size.height;
+        const size = backend.windowSize();
+        width.* = @intFromFloat(size.w);
+        height.* = @intFromFloat(size.h);
 
         tonebender.log("getSize {} {}", .{ width.*, height.* });
         return true;
@@ -163,20 +170,22 @@ pub const timer_support = struct {
     //////////////////////////////////
 
     fn wio_test_loop() !bool {
+        // beginWait coordinates with waitTime below to run frames only when needed
         const nstime = win.beginWait(true);
 
         // marks the beginning of a frame for dvui, can call dvui functions after this
         try win.begin(nstime);
 
-        // send all events to dvui for processing
+        // send all SDL events to dvui for processing
         const quit = try backend.addAllEvents(&win);
         if (quit) return true;
 
         // if dvui widgets might not cover the whole window, then need to clear
         // the previous frame's render
-        backend.clear();
+        _ = Backend.c.SDL_SetRenderDrawColor(backend.renderer, 0, 0, 0, 255);
+        _ = Backend.c.SDL_RenderClear(backend.renderer);
 
-        const keep_running = dvui_frame();
+        const keep_running = gui_frame();
         if (!keep_running) return true;
 
         // marks end of dvui frame, don't call dvui functions after this
@@ -184,28 +193,31 @@ pub const timer_support = struct {
         const end_micros = try win.end(.{});
 
         // cursor management
-        backend.setCursor(win.cursorRequested());
+        try backend.setCursor(win.cursorRequested());
+        try backend.textInputRect(win.textInputRequested());
+
+        // render frame to OS
+        try backend.renderPresent();
 
         // waitTime and beginWait combine to achieve variable framerates
         const wait_event_micros = win.waitTime(end_micros, null);
-        _ = wait_event_micros;
-        // backend.waitEventTimeout(wait_event_micros);
-
-        // Example of how to show a dialog from another thread (outside of win.begin/win.end)
-        if (false) {
-            dvui.dialog(@src(), .{}, .{ .window = &win, .modal = false, .title = "Dialog from Outside", .message = "This is a non modal dialog that was created outside win.begin()/win.end(), usually from another thread." });
-        }
+        _ = wait_event_micros; // autofix
+        // _ = try backend.waitEventTimeout(wait_event_micros);
 
         return false;
     }
 
-    // return true to keep running
-    fn dvui_frame() bool {
+    // both dvui and SDL drawing
+    // return false if user wants to exit the app
+    fn gui_frame() bool {
         {
-            var m = dvui.menu(@src(), .horizontal, .{ .background = true, .expand = .horizontal });
+            var hbox = dvui.box(@src(), .{ .dir = .horizontal }, .{ .style = .window, .background = true, .expand = .horizontal });
+            defer hbox.deinit();
+
+            var m = dvui.menu(@src(), .horizontal, .{});
             defer m.deinit();
 
-            if (dvui.menuItemLabel(@src(), "File", .{ .submenu = true }, .{ .expand = .none })) |r| {
+            if (dvui.menuItemLabel(@src(), "File", .{ .submenu = true }, .{})) |r| {
                 var fw = dvui.floatingMenu(@src(), .{ .from = r }, .{});
                 defer fw.deinit();
 
@@ -218,7 +230,7 @@ pub const timer_support = struct {
                 }
             }
 
-            if (dvui.menuItemLabel(@src(), "Edit", .{ .submenu = true }, .{ .expand = .none })) |r| {
+            if (dvui.menuItemLabel(@src(), "Edit", .{ .submenu = true }, .{})) |r| {
                 var fw = dvui.floatingMenu(@src(), .{ .from = r }, .{});
                 defer fw.deinit();
                 _ = dvui.menuItemLabel(@src(), "Dummy", .{}, .{ .expand = .horizontal });
@@ -244,7 +256,7 @@ pub const timer_support = struct {
             \\- rest of the window is a scroll area
         , .{});
         tl2.addText("\n\n", .{});
-        tl2.addText("Framerate is set by Raylib.", .{});
+        tl2.addText("Framerate is variable and adjusts as needed for input events and animations.", .{});
         tl2.addText("\n\n", .{});
         if (true) {
             tl2.addText("Framerate is capped by vsync.", .{});
@@ -271,25 +283,9 @@ pub const timer_support = struct {
         }
 
         {
-            // var scaler = dvui.scale(@src(), .{ .scale = &scale_val }, .{ .expand = .horizontal });
-            // defer scaler.deinit();
-
-            // {
-            //     var hbox = dvui.box(@src(), .{ .dir = .horizontal }, .{});
-            //     defer hbox.deinit();
-
-            //     if (dvui.button(@src(), "Zoom In", .{}, .{})) {
-            //         scale_val = @round(dvui.themeGet().font_body.size * scale_val + 1.0) / dvui.themeGet().font_body.size;
-            //     }
-
-            //     if (dvui.button(@src(), "Zoom Out", .{}, .{})) {
-            //         scale_val = @round(dvui.themeGet().font_body.size * scale_val - 1.0) / dvui.themeGet().font_body.size;
-            //     }
-            // }
-
             dvui.labelNoFmt(@src(), "Below is drawn directly by the backend, not going through DVUI.", .{}, .{ .margin = .{ .x = 4 } });
 
-            var box = dvui.box(@src(), .{}, .{ .expand = .horizontal, .min_size_content = .{ .h = 40 }, .background = true, .margin = .{ .x = 8, .w = 8 } });
+            var box = dvui.box(@src(), .{ .dir = .horizontal }, .{ .expand = .horizontal, .min_size_content = .{ .h = 40 }, .background = true, .margin = .{ .x = 8, .w = 8 } });
             defer box.deinit();
 
             // Here is some arbitrary drawing that doesn't have to go through DVUI.
@@ -298,18 +294,40 @@ pub const timer_support = struct {
             // like dialogs).
 
             // get the screen rectangle for the box
-            // const rs = box.data().contentRectScale();
+            const rs = box.data().contentRectScale();
 
             // rs.r is the pixel rectangle, rs.s is the scale factor (like for
             // hidpi screens or display scaling)
-            // raylib multiplies everything internally by the monitor scale, so we
-            // have to divide by that
-            // const r = Backend.dvuiRectToRaylib(rs.r);
-            // const s = rs.s / dvui.windowNaturalScale();
-            // c.DrawText("Congrats! You created your first window!", @intFromFloat(r.x + 10 * s), @intFromFloat(r.y + 10 * s), @intFromFloat(20 * s), c.LIGHTGRAY);
-        }
+            var rect: if (Backend.sdl3) Backend.c.SDL_FRect else Backend.c.SDL_Rect = undefined;
+            if (Backend.sdl3) rect = .{
+                .x = (rs.r.x + 4 * rs.s),
+                .y = (rs.r.y + 4 * rs.s),
+                .w = (20 * rs.s),
+                .h = (20 * rs.s),
+            } else rect = .{
+                .x = @intFromFloat(rs.r.x + 4 * rs.s),
+                .y = @intFromFloat(rs.r.y + 4 * rs.s),
+                .w = @intFromFloat(20 * rs.s),
+                .h = @intFromFloat(20 * rs.s),
+            };
+            _ = Backend.c.SDL_SetRenderDrawColor(backend.renderer, 255, 0, 0, 255);
+            _ = Backend.c.SDL_RenderFillRect(backend.renderer, &rect);
 
-        if (dvui.button(@src(), "Show Dialog From\nOutside Frame", .{}, .{})) {}
+            rect.x += if (Backend.sdl3) 24 * rs.s else @intFromFloat(24 * rs.s);
+            _ = Backend.c.SDL_SetRenderDrawColor(backend.renderer, 0, 255, 0, 255);
+            _ = Backend.c.SDL_RenderFillRect(backend.renderer, &rect);
+
+            rect.x += if (Backend.sdl3) 24 * rs.s else @intFromFloat(24 * rs.s);
+            _ = Backend.c.SDL_SetRenderDrawColor(backend.renderer, 0, 0, 255, 255);
+            _ = Backend.c.SDL_RenderFillRect(backend.renderer, &rect);
+
+            _ = Backend.c.SDL_SetRenderDrawColor(backend.renderer, 255, 0, 255, 255);
+
+            if (Backend.sdl3)
+                _ = Backend.c.SDL_RenderLine(backend.renderer, (rs.r.x + 4 * rs.s), (rs.r.y + 30 * rs.s), (rs.r.x + rs.r.w - 8 * rs.s), (rs.r.y + 30 * rs.s))
+            else
+                _ = Backend.c.SDL_RenderDrawLine(backend.renderer, @intFromFloat(rs.r.x + 4 * rs.s), @intFromFloat(rs.r.y + 30 * rs.s), @intFromFloat(rs.r.x + rs.r.w - 8 * rs.s), @intFromFloat(rs.r.y + 30 * rs.s));
+        }
 
         // look at demo() for examples of dvui widgets, shows in a floating window
         dvui.Examples.demo();
