@@ -161,7 +161,9 @@ pub const timer_support = struct {
         }
 
         backend.clear();
-        dvui.Examples.demo();
+        var tl = dvui.textLayout(@src(), .{}, .{ .expand = .both });
+        tl.addText("hello world", .{});
+        tl.deinit();
 
         _ = win.end(.{}) catch unreachable;
 
