@@ -151,22 +151,169 @@ pub const timer_support = struct {
         _ = timer_id;
         // tonebender.log("timer", .{});
 
-        win.begin(0) catch unreachable;
-
-        const quit = backend.addAllEvents(&win) catch unreachable;
-        if (quit) {
+        if (wio_test_loop() catch false) {
             const host: *const clap.ext.gui.Host = @ptrCast(@alignCast(tonebender.host.getExtension(tonebender.host, clap.ext.gui.id)));
             host.closed(tonebender.host, true);
             return;
         }
+    }
 
+    //////////////////////////////////
+    /// I LOVE STEALING
+    //////////////////////////////////
+
+    fn wio_test_loop() !bool {
+        const nstime = win.beginWait(true);
+
+        // marks the beginning of a frame for dvui, can call dvui functions after this
+        try win.begin(nstime);
+
+        // send all events to dvui for processing
+        const quit = try backend.addAllEvents(&win);
+        if (quit) return true;
+
+        // if dvui widgets might not cover the whole window, then need to clear
+        // the previous frame's render
         backend.clear();
-        var tl = dvui.textLayout(@src(), .{}, .{ .expand = .both });
-        tl.addText("hello world", .{});
+
+        const keep_running = dvui_frame();
+        if (!keep_running) return true;
+
+        // marks end of dvui frame, don't call dvui functions after this
+        // - sends all dvui stuff to backend for rendering, must be called before renderPresent()
+        const end_micros = try win.end(.{});
+
+        // cursor management
+        backend.setCursor(win.cursorRequested());
+
+        // waitTime and beginWait combine to achieve variable framerates
+        const wait_event_micros = win.waitTime(end_micros, null);
+        _ = wait_event_micros;
+        // backend.waitEventTimeout(wait_event_micros);
+
+        // Example of how to show a dialog from another thread (outside of win.begin/win.end)
+        if (false) {
+            dvui.dialog(@src(), .{}, .{ .window = &win, .modal = false, .title = "Dialog from Outside", .message = "This is a non modal dialog that was created outside win.begin()/win.end(), usually from another thread." });
+        }
+
+        return false;
+    }
+
+    // return true to keep running
+    fn dvui_frame() bool {
+        {
+            var m = dvui.menu(@src(), .horizontal, .{ .background = true, .expand = .horizontal });
+            defer m.deinit();
+
+            if (dvui.menuItemLabel(@src(), "File", .{ .submenu = true }, .{ .expand = .none })) |r| {
+                var fw = dvui.floatingMenu(@src(), .{ .from = r }, .{});
+                defer fw.deinit();
+
+                if (dvui.menuItemLabel(@src(), "Close Menu", .{}, .{ .expand = .horizontal }) != null) {
+                    m.close();
+                }
+
+                if (dvui.menuItemLabel(@src(), "Exit", .{}, .{ .expand = .horizontal }) != null) {
+                    return false;
+                }
+            }
+
+            if (dvui.menuItemLabel(@src(), "Edit", .{ .submenu = true }, .{ .expand = .none })) |r| {
+                var fw = dvui.floatingMenu(@src(), .{ .from = r }, .{});
+                defer fw.deinit();
+                _ = dvui.menuItemLabel(@src(), "Dummy", .{}, .{ .expand = .horizontal });
+                _ = dvui.menuItemLabel(@src(), "Dummy Long", .{}, .{ .expand = .horizontal });
+                _ = dvui.menuItemLabel(@src(), "Dummy Super Long", .{}, .{ .expand = .horizontal });
+            }
+        }
+
+        var scroll = dvui.scrollArea(@src(), .{}, .{ .expand = .both });
+        defer scroll.deinit();
+
+        var tl = dvui.textLayout(@src(), .{}, .{ .expand = .horizontal, .font_style = .title_4 });
+        const lorem = "This example shows how to use dvui in a normal application.";
+        tl.addText(lorem, .{});
         tl.deinit();
 
-        _ = win.end(.{}) catch unreachable;
+        var tl2 = dvui.textLayout(@src(), .{}, .{ .expand = .horizontal });
+        tl2.addText(
+            \\DVUI
+            \\- paints the entire window
+            \\- can show floating windows and dialogs
+            \\- example menu at the top of the window
+            \\- rest of the window is a scroll area
+        , .{});
+        tl2.addText("\n\n", .{});
+        tl2.addText("Framerate is set by Raylib.", .{});
+        tl2.addText("\n\n", .{});
+        if (true) {
+            tl2.addText("Framerate is capped by vsync.", .{});
+        } else {
+            tl2.addText("Framerate is uncapped.", .{});
+        }
+        tl2.addText("\n\n", .{});
+        tl2.addText("Cursor is always being set by dvui.", .{});
+        tl2.addText("\n\n", .{});
+        if (dvui.useFreeType) {
+            tl2.addText("Fonts are being rendered by FreeType 2.", .{});
+        } else {
+            tl2.addText("Fonts are being rendered by stb_truetype.", .{});
+        }
+        tl2.deinit();
 
-        backend.setCursor(win.cursorRequested());
+        const label = if (dvui.Examples.show_demo_window) "Hide Demo Window" else "Show Demo Window";
+        if (dvui.button(@src(), label, .{}, .{})) {
+            dvui.Examples.show_demo_window = !dvui.Examples.show_demo_window;
+        }
+
+        if (dvui.button(@src(), "Debug Window", .{}, .{})) {
+            dvui.toggleDebugWindow();
+        }
+
+        {
+            // var scaler = dvui.scale(@src(), .{ .scale = &scale_val }, .{ .expand = .horizontal });
+            // defer scaler.deinit();
+
+            // {
+            //     var hbox = dvui.box(@src(), .{ .dir = .horizontal }, .{});
+            //     defer hbox.deinit();
+
+            //     if (dvui.button(@src(), "Zoom In", .{}, .{})) {
+            //         scale_val = @round(dvui.themeGet().font_body.size * scale_val + 1.0) / dvui.themeGet().font_body.size;
+            //     }
+
+            //     if (dvui.button(@src(), "Zoom Out", .{}, .{})) {
+            //         scale_val = @round(dvui.themeGet().font_body.size * scale_val - 1.0) / dvui.themeGet().font_body.size;
+            //     }
+            // }
+
+            dvui.labelNoFmt(@src(), "Below is drawn directly by the backend, not going through DVUI.", .{}, .{ .margin = .{ .x = 4 } });
+
+            var box = dvui.box(@src(), .{}, .{ .expand = .horizontal, .min_size_content = .{ .h = 40 }, .background = true, .margin = .{ .x = 8, .w = 8 } });
+            defer box.deinit();
+
+            // Here is some arbitrary drawing that doesn't have to go through DVUI.
+            // It can be interleaved with DVUI drawing.
+            // NOTE: This only works in the main window (not floating subwindows
+            // like dialogs).
+
+            // get the screen rectangle for the box
+            // const rs = box.data().contentRectScale();
+
+            // rs.r is the pixel rectangle, rs.s is the scale factor (like for
+            // hidpi screens or display scaling)
+            // raylib multiplies everything internally by the monitor scale, so we
+            // have to divide by that
+            // const r = Backend.dvuiRectToRaylib(rs.r);
+            // const s = rs.s / dvui.windowNaturalScale();
+            // c.DrawText("Congrats! You created your first window!", @intFromFloat(r.x + 10 * s), @intFromFloat(r.y + 10 * s), @intFromFloat(20 * s), c.LIGHTGRAY);
+        }
+
+        if (dvui.button(@src(), "Show Dialog From\nOutside Frame", .{}, .{})) {}
+
+        // look at demo() for examples of dvui widgets, shows in a floating window
+        dvui.Examples.demo();
+
+        return true;
     }
 };
