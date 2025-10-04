@@ -20,4 +20,4 @@ init-faust-symlink dsp='':
 
 install: build
    mkdir -p ~/.clap
-   ln -rs ./zig-out/lib/tonebender.clap ~/.clap
+   ln -rsf ./zig-out/lib/tonebender.clap ~/.clap
