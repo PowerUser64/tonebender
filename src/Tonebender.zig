@@ -121,7 +121,7 @@ fn process(plugin: *const clap.Plugin, clap_process: *const clap.Process) callco
     for (out[0..channel_count]) |channel| {
         for (channel, 0..clap_process.frames_count) |*frame, i| {
             const x: f32 = @floatFromInt(i);
-            frame.* = @sin(x);
+            frame.* = (@sin(x / 10000)) * 1 / 10; // * @sin(x/10000);
         }
     }
 
